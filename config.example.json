@@ -1,0 +1,25 @@
+{
+    "qase": {
+        "token": "<QASE_API_TOKEN>",
+        "host": "<QASE_API_HOST|Default:qase.io>"
+    },
+    "testrail": {
+        "host": "<TESTRAIL_HOST>",
+        "user": "<TESTRAIL_USER_EMAIL>",
+        "password": "<TESTRAIL_USER_PASSWORD>"
+    },
+    "projects": [
+        "Exact name of project in TestRail",
+        {
+            "name": "Exact name",
+            "suites": ["Suite 1", "Suite 2", "Suite 3"]
+        }
+    ],
+    "preserveids": true,
+    "suitesasprojects": true,
+    "fields": {
+        "description": "custom_description"
+    },
+    "defaultuser": 1,
+    "threads": 5
+}
