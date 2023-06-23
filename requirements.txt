@@ -1,2 +1,4 @@
 qaseio>=3.3.0
 certifi
+requests
+testrail

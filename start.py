@@ -15,7 +15,7 @@ print('[Importer] Connecting to TestRail...')
 testrail_api = TestRailAPIClient(
     base_url = config.get('testrail_host'),
     user = config.get('testrail_user'),
-    token = config.get('testrail_token')
+    token = config.get('testrail_password')
 )
 
 print('[Importer] Connecting to Qase...')
