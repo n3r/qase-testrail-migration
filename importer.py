@@ -146,7 +146,7 @@ class TestRailImporter:
 
     # Method generates short code that will be used as a project code in from a string
     def _short_code(self, s):
-        string = re.sub('[\(\)]', '', s)
+        string = re.sub('[\(\)\-\:\/]', '', s)
         words = string.split()
 
         if len(words) > 1:  # if the string contains multiple words
