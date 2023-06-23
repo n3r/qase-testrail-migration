@@ -38,7 +38,7 @@ class TestRailImporter:
             if self.projects:
                 print('[Importer] Found projects: ' + str(len(self.projects)))
                 for project in self.projects:
-                    if (project['is_completed'] == False):
+                    if (project['name'] == self.config.get("projects_name")):
                         if (project['suite_mode'] == 3 and self.config.get('suitesasprojects') == True):
                             print('[Importer] Loading suites from TestRail...')
                             suites = self.testrail.send_get('get_suites/' + str(project['id']))
@@ -46,9 +46,10 @@ class TestRailImporter:
                                 print('[Importer] Found suites: ' + str(len(suites)))
                                 project['suites'] = suites
                                 for suite in suites:
-                                    code = self._create_project(suite['name'], suite['description'])
-                                    self.suites_map[code] = {}
-                                    self._create_suites(code, project['id'], suite['id'])
+                                    if suite['name'] == self.config.get('projects_suites'):
+                                        code = self._create_project(suite['name'], suite['description'])
+                                        self.suites_map[code] = {}
+                                        self._create_suites(code, project['id'], suite['id'])
                                 
                         else:
                             code = self._create_project(project['title'], project['announcement'])
@@ -57,11 +58,12 @@ class TestRailImporter:
 
                 # Importing test cases
                 for project in self.projects:
-                    if (project['is_completed'] == False):
+                    if (project['name'] == self.config.get("projects_name")):
                         if (project['suite_mode'] == 3 and self.config.get('suitesasprojects') == True):
                             for suite in project['suites']:
-                                code = self._short_code(suite['name'])
-                                self._import_test_cases(project['id'], code, suite['id'])
+                                if suite['name'] == self.config.get('projects_suites'):
+                                    code = self._short_code(suite['name'])
+                                    self._import_test_cases(project['id'], code, suite['id'])
                         else:
                             self._import_test_cases(project['id'], project['code'])
         except ImportException as e:
@@ -144,7 +146,9 @@ class TestRailImporter:
 
     # Method generates short code that will be used as a project code in from a string
     def _short_code(self, s):
-        words = s.split()
+        string = s.replace('(', '')
+        string1 = string.replace(')', '')
+        words = string1.split()
 
         if len(words) > 1:  # if the string contains multiple words
             code = ''.join(word[0] for word in words)
