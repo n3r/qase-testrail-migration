@@ -99,9 +99,13 @@ class TestRailImporter:
                                 if (suite['name'] in suites_to_import):
                                     self.active_project_code = self._short_code(suite['name'])
                                     self._import_test_cases(project['id'], suite['id'])
+                                    if self.config.get('runs') == True:
+                                        self._import_runs(project['id'], suite['id'])
                         else:
                             self.active_project_code = project['code']
                             self._import_test_cases(project['id'])
+                            if self.config.get('runs') == True:
+                                self._import_runs(project['id'])
                     self.active_project_code = None
         except ImportException as e:
             print('[Importer] Error: ' + str(e))
@@ -265,8 +269,15 @@ class TestRailImporter:
         custom_fields = self.testrail.send_get('get_case_fields')
         print(f'[Importer] Found {str(len(custom_fields))} custom fields')
 
+        fields_to_import = self.config.get('fields')
+        
+        if len(fields_to_import) == 0 and not fields_to_import:
+            for field in custom_fields:
+                if field['system_name'].startswith('custom_'):
+                    fields_to_import.append(field['name'])
+
         for field in custom_fields:
-            if field['name'] in self.config.get('fields') and field['is_active']:
+            if field['name'] in fields_to_import and field['is_active']:
                 if (field['type_id'] in self.custom_fields_type_map):
                     print('[Importer] Creating custom field: ' + field['name'])
                     self._create_custom_field(field, api_instance, qase_custom_fields)
@@ -496,3 +507,6 @@ class TestRailImporter:
                 if isinstance(project, dict) and project['name'] == project_title and project['suites']:
                     suites = project['suites']
         return suites
+    
+    def _import_runs(self, project_id, suite_id = None) -> None:
+        pass
