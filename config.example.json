@@ -17,9 +17,16 @@
     ],
     "preserveids": true,
     "suitesasprojects": true,
-    "fields": {
-        "description": "custom_description"
-    },
+    "fields": [
+        "steps_separated",
+        "checkbox",
+        "automation_type",
+        "preconds",
+        "steps",
+        "expected",
+        "dropd",
+        "mission"
+    ],
     "types": {
         "1": "other",
         "2": "smoke",
