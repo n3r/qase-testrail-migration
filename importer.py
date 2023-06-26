@@ -43,6 +43,18 @@ class TestRailImporter:
             8: 9,
             12: 6,
         }
+        self.qase_fields_type_map = {
+            "number": 0,
+            "string": 1,
+            "text": 2,
+            "selectbox": 3,
+            "checkbox": 4,
+            "radio": 5,
+            "multiselect": 6,
+            "url": 7,
+            "user": 8,
+            "datetime": 9,
+        }
         self.custom_fields_map = {}
         # Step fields. Used to determine if a field is a step field or not during import
         self.step_fields = []
@@ -139,10 +151,7 @@ class TestRailImporter:
         sections = self._get_sections(testrail_project_id, suite_id)
         for section in sections:
             print(f"[Importer] Creating suite in Qase {qase_code} : {section['name']} ({section['id']})")
-            testrail_attachments = self._check_attachments(section['description'])
-            if (testrail_attachments):
-                attachments_map = self._import_attachments(qase_code, testrail_attachments)
-                section['description'] = self._replace_attachments(string=section['description'], map=attachments_map)
+            section['description'] = self._check_and_replace_attachments(section['description'], qase_code)
 
             api_instance = SuitesApi(self.qase)
             api_response = api_instance.create_suite(
@@ -250,23 +259,33 @@ class TestRailImporter:
         self._create_types_map()
         self._create_priorities_map()
 
+        api_instance = CustomFieldsApi(self.qase)
+        qase_custom_fields = api_instance.get_custom_fields(entity='case', limit=100).result.entities
+
         custom_fields = self.testrail.send_get('get_case_fields')
         print(f'[Importer] Found {str(len(custom_fields))} custom fields')
 
-        api_instance = CustomFieldsApi(self.qase)
         for field in custom_fields:
             if field['name'] in self.config.get('fields') and field['is_active']:
                 if (field['type_id'] in self.custom_fields_type_map):
                     print('[Importer] Creating custom field: ' + field['name'])
-                    self._create_custom_field(field, api_instance)
-                print('[Importer] Custom field created: ' + field['name'])
+                    self._create_custom_field(field, api_instance, qase_custom_fields)
             else:
                 print('[Importer] Skipping custom field: ' + field['name'])
 
             if (field['type_id'] == 10):
                 self.step_fields.append(field['name'])
 
-    def _create_custom_field(self, field, api_instance):
+    def _create_custom_field(self, field, api_instance, qase_fields):
+
+        if (qase_fields and len(qase_fields) > 0):
+            for qase_field in qase_fields:
+                if qase_field.title == field['label'] and self.custom_fields_type_map[field['type_id']] == self.qase_fields_type_map[qase_field.type.lower()]:
+                    print('[Importer] Custom field already exists: ' + field['label'])
+                    field['qase_id'] = qase_field.id
+                    self.custom_fields_map[field['name']] = field
+                    return
+
         data = {
             'title': field['label'],
             'entity': 0, # 0 - case, 1 - run, 2 - defect,
@@ -295,6 +314,7 @@ class TestRailImporter:
             else:
                 field['qase_id'] = api_response.result.id
                 self.custom_fields_map[field['name']] = field
+                print('[Importer] Custom field created: ' + field['name'])
         except ApiException as e:
             print('[Importer] Exception when calling CustomFieldsApi->create_custom_field: %s\n' % e)
 
@@ -315,31 +335,23 @@ class TestRailImporter:
         return result
 
     def _create_types_map(self):
-        types = self.testrail.send_get('get_case_types')
-
+        tr_types = self.testrail.send_get('get_case_types')
         qase_types = self.config.get('types')
 
-        for type in types:
-            for qase_type in qase_types:
-                if type['name'] == qase_type:
-                    qase_types[type['id']] = qase_types[qase_type]
-                    del qase_types[qase_type]
-                    break
-            if type['id'] in qase_types.values():
-                self.types_map[type['id']] = qase_types[type['id']]
-            else:
-                self.types_map[type['id']] = 1
+        for tr_type in tr_types:
+            self.types_map[tr_type['id']] = 1
+            for qase_type_id in qase_types:
+                if tr_type['name'].lower() == qase_types[qase_type_id].lower():
+                    self.types_map[tr_type['id']] = int(qase_type_id)
 
     def _create_priorities_map(self):
-        priorities = self.testrail.send_get('get_priorities')
-        
+        tr_priorities = self.testrail.send_get('get_priorities')
         qase_priorities = self.config.get('priorities')
-
-        for priority in priorities:
-            if priority['id'] in qase_priorities.values():
-                self.priorities_map[priority['id']] = qase_priorities[priority['id']]
-            else:
-                self.priorities_map[priority['id']] = 1
+        for tr_priority in tr_priorities:
+            self.types_map[tr_priority['id']] = 1
+            for qase_priority_id in qase_priorities:
+                if tr_priority['name'].lower() == qase_priorities[qase_priority_id].lower():
+                    self.priorities_map[tr_priority['id']] = int(qase_priority_id)
 
     def _import_test_cases(self, project_id: int, suite_id: Optional[int] = None):
         limit = 250
@@ -388,7 +400,7 @@ class TestRailImporter:
                 'updated_at': datetime.fromtimestamp(case['updated_on']),
                 'author_id': self._get_user_id(case['created_by']),
                 'steps': [],
-                'custom_fields': {},
+                'custom_field': {},
             }
 
             # import custom fields
@@ -420,12 +432,10 @@ class TestRailImporter:
                 
                 if custom_field['type_id'] in (6, 12):
                     # Importing dropdown and multiselect values
-                    data['custom_fields'][custom_field['qase_id']] = int(case[field_name])+1 # hack
+                    data['custom_field'][str(custom_field['qase_id'])] = str(int(case[field_name])+1) # hack
                 else:
-                    data['custom_fields'][custom_field['qase_id']] = self._check_and_replace_attachments(case[field_name], project_code)
-            print(field_name)
-            if field_name in self.step_fields and case[field_name]:
-                print('a')
+                    data['custom_field'][str(custom_field['qase_id'])] = str(self._check_and_replace_attachments(case[field_name], project_code))
+            if field_name[len('custom_'):] in self.step_fields and case[field_name]:
                 steps = []
                 i = 1
                 for step in case[field_name]:
@@ -446,12 +456,14 @@ class TestRailImporter:
             if (testrail_attachments):
                 attachments_map = self._import_attachments(project_code, testrail_attachments)
                 return self._replace_attachments(string=string, map=attachments_map)
-        return ''
+        return string
     
     def _set_priority(self, case: dict, data: dict) -> dict:
+        data['priority'] = self.priorities_map[case['priority_id']] if case['priority_id'] in self.priorities_map else 1
         return data
     
     def _set_type(self, case: dict, data: dict) -> dict:
+        data['type'] = self.types_map[case['type_id']] if case['type_id'] in self.types_map else 1
         return data
     
     def _get_suite_id(self, code: str, section_id: Optional[int] = None) -> int:
