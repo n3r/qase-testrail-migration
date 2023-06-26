@@ -443,7 +443,10 @@ class TestRailImporter:
                 
                 if custom_field['type_id'] in (6, 12):
                     # Importing dropdown and multiselect values
-                    data['custom_field'][str(custom_field['qase_id'])] = str(int(case[field_name])+1) # hack
+                    if type(case[field_name]) == str:
+                        data['custom_field'][str(custom_field['qase_id'])] = str(int(case[field_name])+1)
+                    if type(case[field_name]) == list:
+                        data['custom_field'][str(custom_field['qase_id'])] = ','.join(str(int(value)+1) for value in case[field_name])
                 else:
                     data['custom_field'][str(custom_field['qase_id'])] = str(self._check_and_replace_attachments(case[field_name], project_code))
             if field_name[len('custom_'):] in self.step_fields and case[field_name]:
