@@ -30,8 +30,27 @@ Create a new config file from the example or use template:
     ],
     "preserveids": true,
     "suitesasprojects": true,
-    "maps": {
-        "fields": {}
+    "fields": {
+        
+    },
+    "types": {
+        "1": "other",
+        "2": "smoke",
+        "3": "regression",
+        "4": "security",
+        "5": "usability",
+        "6": "performance",
+        "7": "acceptance",
+        "8": "functional",
+        "9": "compatibility",
+        "10": "integration",
+        "11": "exploratory"
+    },
+    "priorities": {
+        "0": "not set",
+        "1": "high",
+        "2": "medium",
+        "3": "low"
     },
     "defaultuser": 1,
     "threads": 5
@@ -46,8 +65,9 @@ Required fields to fill:
 - `projects` - List of projects to migrate. You can specify only name of project or name of project and list of suites to migrate. If you specify only name of project, all suites will be migrated
 - `preserveids` - If `true`, then all test cases will be migrated with the same IDs as in TestRail. If `false`, then all test cases will be migrated with new IDs
 - `suitesasprojects` - If `true`, then all suites inside project will be migrated as separate projects. If `false`, then all suites will be migrated as suites in one project
-- 
 - `fields` - Map of custom fields to import. You can specify custom fields in TestRail and Qase and map them to migrate data from TestRail to Qase. Example:
+- `types` - ids and values for "type" field from Qase. In the example you can find default values created for a new workspace in Qase. If you have changed the values, you can pass an updated map here.
+- `priorities` - ids and values for "priority" field from Qase. In the example you can find default values created for a new workspace in Qase. If you have changed the values, you can pass an updated map here.
 ```json
 
 ```

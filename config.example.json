@@ -20,6 +20,25 @@
     "fields": {
         "description": "custom_description"
     },
+    "types": {
+        "1": "other",
+        "2": "smoke",
+        "3": "regression",
+        "4": "security",
+        "5": "usability",
+        "6": "performance",
+        "7": "acceptance",
+        "8": "functional",
+        "9": "compatibility",
+        "10": "integration",
+        "11": "exploratory"
+    },
+    "priorities": {
+        "0": "not set",
+        "1": "high",
+        "2": "medium",
+        "3": "low"
+    },
     "defaultuser": 1,
     "threads": 5
 }
