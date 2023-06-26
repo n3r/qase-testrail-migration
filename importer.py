@@ -70,6 +70,7 @@ class TestRailImporter:
                 print('[Importer] Found projects: ' + str(len(self.projects)))
                 for project in self.projects:
                     if (project['is_completed'] == False and self._check_import(project['name'])):
+                        print(project)
                         if (project['suite_mode'] == 3 and self.config.get('suitesasprojects') == True):
                             print('[Importer] Loading suites from TestRail...')
                             suites = self.testrail.send_get('get_suites/' + str(project['id']))
@@ -86,7 +87,7 @@ class TestRailImporter:
                                         self._create_suites(code, project['id'], suite['id'])
                                 
                         else:
-                            code = self._create_project(project['title'], project['announcement'])
+                            code = self._create_project(project['name'], project['announcement'])
                             self._create_suites(code, project['id'], None)
                 self._import_custom_fields()
 
