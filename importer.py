@@ -252,12 +252,15 @@ class TestRailImporter:
         return content
 
     def _replace_attachments(self, map: dict, string: str) -> str:
-        new = re.sub(
-            r'!\[\]\(index\.php\?\/attachments\/get\/(\d+)\)',
-            lambda match: f'![{map[match.group(1)]["filename"]}]({map[match.group(1)]["url"]})',
-            string
-        )
-        return new
+        try:
+            string = re.sub(
+                r'!\[\]\(index\.php\?\/attachments\/get\/(\d+)\)',
+                lambda match: f'![{map[match.group(1)]["filename"]}]({map[match.group(1)]["url"]})',
+                string
+            )
+        except Exception as e:
+            print('[Importer] Exception when replacing attachments: %s\n' % e)
+        return string
     
     def _import_custom_fields(self):
         print('[Importer] Importing system fields from TestRail...')
