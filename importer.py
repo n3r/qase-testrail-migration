@@ -221,7 +221,7 @@ class TestRailImporter:
     
     def _check_attachments(self, string: str) -> List:
         if (string):
-            return re.findall(r'\(index\.php\?\/attachments\/get\/(\d+)\)', string)
+            return re.findall(r'\(index\.php\?\/attachments\/get\/(\d+)\)', str(string))
         return []
     
     def _import_attachments(self, code, testrail_attachments: List) -> dict:
@@ -353,13 +353,13 @@ class TestRailImporter:
             self.types_map[tr_type['id']] = 1
             for qase_type_id in qase_types:
                 if tr_type['name'].lower() == qase_types[qase_type_id].lower():
-                    self.types_map[tr_type['id']] = int(qase_type_id)
+                    self.types_map[tr_type['id']] = int(qase_type_id) - 1
 
     def _create_priorities_map(self):
         tr_priorities = self.testrail.send_get('get_priorities')
         qase_priorities = self.config.get('priorities')
         for tr_priority in tr_priorities:
-            self.types_map[tr_priority['id']] = 1
+            self.priorities_map[tr_priority['id']] = 1
             for qase_priority_id in qase_priorities:
                 if tr_priority['name'].lower() == qase_priorities[qase_priority_id].lower():
                     self.priorities_map[tr_priority['id']] = int(qase_priority_id)
