@@ -11,7 +11,7 @@ from qaseio.exceptions import ApiException
 from io import BytesIO
 import re
 import json
-from typing import List, Optional
+from typing import List, Optional, Union
 import urllib.parse
 from datetime import datetime
 from concurrent.futures import ThreadPoolExecutor, as_completed
@@ -70,7 +70,6 @@ class TestRailImporter:
                 print('[Importer] Found projects: ' + str(len(self.projects)))
                 for project in self.projects:
                     if (project['is_completed'] == False and self._check_import(project['name'])):
-                        print(project)
                         if (project['suite_mode'] == 3 and self.config.get('suitesasprojects') == True):
                             print('[Importer] Loading suites from TestRail...')
                             suites = self.testrail.send_get('get_suites/' + str(project['id']))
@@ -233,11 +232,14 @@ class TestRailImporter:
             
             api_attachments = AttachmentsApi(self.qase)
 
-            response = api_attachments.upload_attachment(
-                    code, file=[attachment_data],
-                ).result
-            if response:
-                attachments_map[attachment] = response[0]
+            try:
+                response = api_attachments.upload_attachment(
+                        code, file=[attachment_data],
+                    ).result
+                if response:
+                    attachments_map[attachment] = response[0]
+            except ApiException as e:
+                print('[Importer] Exception when calling AttachmentsApi->upload_attachment: %s\n' % e)
         return attachments_map
     
     def _get_attachment_meta(self, data):
@@ -293,10 +295,16 @@ class TestRailImporter:
 
     def _create_custom_field(self, field, api_instance, qase_fields):
 
+        # Skip if field already exists
         if (qase_fields and len(qase_fields) > 0):
             for qase_field in qase_fields:
                 if qase_field.title == field['label'] and self.custom_fields_type_map[field['type_id']] == self.qase_fields_type_map[qase_field.type.lower()]:
                     print('[Importer] Custom field already exists: ' + field['label'])
+                    if (qase_field.type.lower() in ("selectbox", "multiselect", "radio")):
+                        field['qase_values'] = {}
+                        values = json.loads(qase_field.value)
+                        for value in values:
+                            field['qase_values'][value['id']] = value['title']
                     field['qase_id'] = qase_field.id
                     self.custom_fields_map[field['name']] = field
                     return
@@ -315,6 +323,7 @@ class TestRailImporter:
             data['default_value'] = self._get_default_value(field)
         if (field['type_id'] == 12 or field['type_id'] == 6):
             values = self.__split_values(field['configs'][0]['options']['items'])
+            field['qase_values'] = {}
             for key, value in values.items():
                 data['value'].append(
                     CustomFieldCreateValueInner(
@@ -322,6 +331,7 @@ class TestRailImporter:
                         title=value,
                     ),
                 )
+                field['qase_values'][int(key)+1] = value
         try:
             api_response = api_instance.create_custom_field(custom_field_create=CustomFieldCreate(**data))
             if (api_response.status == False):
@@ -357,7 +367,7 @@ class TestRailImporter:
             self.types_map[tr_type['id']] = 1
             for qase_type_id in qase_types:
                 if tr_type['name'].lower() == qase_types[qase_type_id].lower():
-                    self.types_map[tr_type['id']] = int(qase_type_id) - 1
+                    self.types_map[tr_type['id']] = int(qase_type_id)
 
     def _create_priorities_map(self):
         tr_priorities = self.testrail.send_get('get_priorities')
@@ -447,10 +457,12 @@ class TestRailImporter:
                 
                 if custom_field['type_id'] in (6, 12):
                     # Importing dropdown and multiselect values
-                    if type(case[field_name]) == str:
-                        data['custom_field'][str(custom_field['qase_id'])] = str(int(case[field_name])+1)
-                    if type(case[field_name]) == list:
-                        data['custom_field'][str(custom_field['qase_id'])] = ','.join(str(int(value)+1) for value in case[field_name])
+                    value = self._validate_custom_field_values(custom_field, case[field_name])
+                    if value:
+                        if type(value) == str or type(value) == int:
+                            data['custom_field'][str(custom_field['qase_id'])] = str(int(value)+1)
+                        if type(value) == list:
+                            data['custom_field'][str(custom_field['qase_id'])] = ','.join(str(int(v)+1) for v in value)
                 else:
                     data['custom_field'][str(custom_field['qase_id'])] = str(self._check_and_replace_attachments(case[field_name], project_code))
             if field_name[len('custom_'):] in self.step_fields and case[field_name]:
@@ -467,6 +479,26 @@ class TestRailImporter:
                     i += 1
                 data['steps'] = steps
         return data
+    
+    # Method validates if custom field value exists (skip)
+    def _validate_custom_field_values(self, custom_field: dict, value: Union[str, List]) -> Optional[Union[str, list]]: 
+        values = self.__split_values(custom_field['configs'][0]['options']['items'])
+        if type(value) == str or type(value) == int:
+            if str(value) not in values.keys():
+                print(f'[Importer] Custom field {custom_field["name"]} has invalid value {value}')
+                return None
+        elif type(value) == list:
+            filtered_values = []
+            for item in value:
+                if str(item) in values.keys():
+                    filtered_values.append(item)
+                else:
+                    print(f'[Importer] Custom field {custom_field["name"]} has invalid value {value}')
+            if len(filtered_values) == 0:
+                return None
+            else:
+                return filtered_values
+        return value
     
     def _check_and_replace_attachments(self, string: str, project_code: str) -> str:
         if string:
