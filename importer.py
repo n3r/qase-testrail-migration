@@ -471,12 +471,14 @@ class TestRailImporter:
     def _set_refs(self, case:dict, data: dict):
         if self.refs_id and case['refs'] and self.config.get('refs_enable'):
             string = str(case['refs'])
-            url = self.config.get('refs_url')
-            if not string.endswith('/'):
-                string = string + '/'
-            if not string.startswith(url):
+            url = str(self.config.get('refs_url'))
+            if string.startswith('http'):
+                data['custom_field'][str(self.refs_id)] = quote(string, safe="/:")
+            elif url != '':
+                if not url.endswith('/'):
+                    string = string + '/'
                 string = url + string
-            data['custom_field'][str(self.refs_id)] = quote(url, safe="/:")
+                data['custom_field'][str(self.refs_id)] = quote(string, safe="/:")
         return data
     
     def _set_suite(self, case: dict, data: dict, project_code: str) -> dict:
