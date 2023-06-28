@@ -470,7 +470,13 @@ class TestRailImporter:
     
     def _set_refs(self, case:dict, data: dict):
         if self.refs_id and case['refs'] and self.config.get('refs_enable'):
-            data['custom_field'][str(self.refs_id)] = self.config.get('refs_url') + str(case['refs'])
+            string = str(case['refs'])
+            url = self.config.get('refs_url')
+            if not string.endswith('/'):
+                string = string + '/'
+            if not string.startswith(url):
+                string = url + string
+            data['custom_field'][str(self.refs_id)] = string
         return data
     
     def _set_suite(self, case: dict, data: dict, project_code: str) -> dict:
