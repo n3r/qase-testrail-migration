@@ -12,7 +12,7 @@ from io import BytesIO
 import re
 import json
 from typing import List, Optional, Union
-import urllib.parse
+from urllib.parse import quote, unquote
 from datetime import datetime
 from concurrent.futures import ThreadPoolExecutor, as_completed
 
@@ -250,7 +250,7 @@ class TestRailImporter:
         filename_header = data.headers.get('Content-Disposition', '')
         match = re.search(r"filename\*=UTF-8''(.+)", filename_header)
         if match:
-            content.name = urllib.parse.unquote(match.group(1))
+            content.name = unquote(match.group(1))
 
         return content
 
@@ -476,7 +476,7 @@ class TestRailImporter:
                 string = string + '/'
             if not string.startswith(url):
                 string = url + string
-            data['custom_field'][str(self.refs_id)] = string
+            data['custom_field'][str(self.refs_id)] = quote(url, safe="/:")
         return data
     
     def _set_suite(self, case: dict, data: dict, project_code: str) -> dict:
