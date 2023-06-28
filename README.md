@@ -60,7 +60,11 @@ Create a new config file from the example or use template:
         "3": "low"
     },
     "defaultuser": 1,
-    "threads": 5
+    "threads": 5,
+    "refs": {
+        "enable": true,
+        "url": "http://localhost:8000/"
+    }
 }
 ```
 

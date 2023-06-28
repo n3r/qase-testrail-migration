@@ -58,6 +58,7 @@ class TestRailImporter:
         self.custom_fields_map = {}
         # Step fields. Used to determine if a field is a step field or not during import
         self.step_fields = []
+        self.refs_id = None
 
     def start(self):
         try:
@@ -293,6 +294,30 @@ class TestRailImporter:
             if (field['type_id'] == 10):
                 self.step_fields.append(field['name'])
 
+        if self.config.get('refs_enable'):
+            if (qase_custom_fields and len(qase_custom_fields) > 0):
+                for qase_field in qase_custom_fields:
+                    if qase_field.title == 'Refs':
+                        print('[Importer] Refs field found')
+                        self.refs_id = qase_field.id
+            
+            if not self.refs_id:
+                print('[Importer] Refs field not found. Creating a new one')
+                data = {
+                    'title': 'Refs',
+                    'entity': 0, # 0 - case, 1 - run, 2 - defect,
+                    'type': 7,
+                    'is_filterable': True,
+                    'is_visible': True,
+                    'is_required': False,
+                    'is_enabled_for_all_projects': True,
+                }
+                api_response = api_instance.create_custom_field(custom_field_create=CustomFieldCreate(**data))
+                if (api_response.status == False):
+                    print('[Importer] Error creating refs field')
+                else:
+                    self.refs_id = api_response.result.id
+
     def _create_custom_field(self, field, api_instance, qase_fields):
 
         # Skip if field already exists
@@ -434,6 +459,7 @@ class TestRailImporter:
             data = self._set_priority(case=case, data=data)
             data = self._set_type(case=case, data=data)
             data = self._set_suite(case=case, data=data, project_code=project_code)
+            data = self._set_refs(case=case, data=data)
 
             result.append(
                 BulkRequestCasesInner(
@@ -441,6 +467,11 @@ class TestRailImporter:
                 )
             )
         return result
+    
+    def _set_refs(self, case:dict, data: dict):
+        if self.refs_id and case['refs'] and self.config.get('refs_enable'):
+            data['custom_field'][str(self.refs_id)] = self.config.get('refs_url') + str(case['refs'])
+        return data
     
     def _set_suite(self, case: dict, data: dict, project_code: str) -> dict:
         suite_id = self._get_suite_id(code = project_code, section_id = case['section_id'])
