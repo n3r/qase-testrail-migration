@@ -1,4 +1,4 @@
-from testrail import TestRailAPIClient
+from testrail import TestRailAPIClient, APIError
 from config_manager import ConfigManager
 from qaseio.api.projects_api import ProjectsApi
 from qaseio.api.suites_api import SuitesApi
@@ -228,8 +228,12 @@ class TestRailImporter:
     def _import_attachments(self, code, testrail_attachments: List) -> dict:
         attachments_map = {}
         for attachment in testrail_attachments:
-            print('[Importer] Importing attachment: ' + attachment)
-            attachment_data = self._get_attachment_meta(self.testrail.send_get('get_attachment/' + attachment))
+            try: 
+                print('[Importer] Importing attachment: ' + attachment)
+                attachment_data = self._get_attachment_meta(self.testrail.send_get('get_attachment/' + attachment))
+            except APIError as e:
+                print('[Importer] Exception when calling TestRail->get_attachment: %s\n' % e)
+                continue
             
             api_attachments = AttachmentsApi(self.qase)
 
