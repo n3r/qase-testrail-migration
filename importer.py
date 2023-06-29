@@ -512,14 +512,18 @@ class TestRailImporter:
                 steps = []
                 i = 1
                 for step in case[field_name]:
-                    steps.append(
-                        TestStepCreate(
-                            action=self._check_and_replace_attachments(step['content'], project_code),
-                            expected_result=self._check_and_replace_attachments(step['expected'], project_code),
-                            position=i
+                    action = self._check_and_replace_attachments(step['content'], project_code)
+                    if (action and action != ''):
+                        steps.append(
+                            TestStepCreate(
+                                action=action,
+                                expected_result=self._check_and_replace_attachments(step['expected'], project_code),
+                                position=i
+                            )
                         )
-                    )
-                    i += 1
+                        i += 1
+                    else:
+                        print(f'[Importer] Case {case["title"]} has invalid step {step}')
                 data['steps'] = steps
         return data
     
