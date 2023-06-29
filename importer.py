@@ -231,7 +231,7 @@ class TestRailImporter:
             try: 
                 print('[Importer] Importing attachment: ' + attachment)
                 attachment_data = self._get_attachment_meta(self.testrail.send_get('get_attachment/' + attachment))
-            except APIError as e:
+            except Exception as e:
                 print('[Importer] Exception when calling TestRail->get_attachment: %s\n' % e)
                 continue
             
