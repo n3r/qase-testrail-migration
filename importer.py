@@ -243,7 +243,7 @@ class TestRailImporter:
                     ).result
                 if response:
                     attachments_map[attachment] = response[0]
-            except ApiException as e:
+            except Exception as e:
                 print('[Importer] Exception when calling AttachmentsApi->upload_attachment: %s\n' % e)
         return attachments_map
     
