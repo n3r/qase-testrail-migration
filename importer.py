@@ -211,7 +211,7 @@ class TestRailImporter:
 
     # Method generates short code that will be used as a project code in from a string
     def _short_code(self, s: str) -> str:
-        s = re.sub('[!@#$%^&*()]', '', s)  # remove special characters
+        s = re.sub('[!@#$%^&*().,1234567890]', '', s)  # remove special characters
         words = s.split()
 
         if len(words) > 1:  # if the string contains multiple words
