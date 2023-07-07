@@ -71,7 +71,7 @@ class TestRailImporter:
                 print('[Importer] Found projects: ' + str(len(self.projects)))
                 for project in self.projects:
                     if (project['is_completed'] == False and self._check_import(project['name'])):
-                        if (project['suite_mode'] == 3 and self.config.get('suitesasprojects') == True):
+                        if (project['suite_mode'] == 3):
                             print('[Importer] Loading suites from TestRail...')
                             suites = self.testrail.send_get('get_suites/' + str(project['id']))
                             if suites:
@@ -80,25 +80,41 @@ class TestRailImporter:
 
                                 suites_to_import = self._get_suites_to_import(project['name'])
 
+                                if self.config.get('suitesasprojects') == False:
+                                    code = self._create_project(project['name'], project['announcement'])
+                                    project['code'] = code
+                                    self.suites_map[code] = {}
+
                                 for suite in suites:
                                     if (suite['name'] in suites_to_import):
-                                        code = self._create_project(suite['name'], suite['description'])
-                                        self.suites_map[code] = {}
-                                        self._create_suites(code, project['id'], suite['id'])
-                                
+                                        if self.config.get('suitesasprojects') == True:
+                                            code = self._create_project(suite['name'], suite['description'])
+                                            # Cleaning suites map
+                                            self.suites_map[code] = {}
+                                            self._create_suites(code, project['id'], suite['id'])
+                                        else:
+                                            # Hack to import into root suites
+                                            id = 1000000
+                                            self._create_suite(code, suite['name'], suite['description'], testrail_suite_id=id)
+                                            self._create_suites(code, project['id'], suite['id'], parent_id=id)
+                                            id += 1
                         else:
                             code = self._create_project(project['name'], project['announcement'])
+                            project['code'] = code
                             self._create_suites(code, project['id'], None)
                 self._import_custom_fields()
 
                 # Importing test cases
                 for project in self.projects:
                     if (project['is_completed'] == False and self._check_import(project['name'])):
-                        if (project['suite_mode'] == 3 and self.config.get('suitesasprojects') == True):
+                        if project['suite_mode'] == 3:
                             suites_to_import = self._get_suites_to_import(project['name'])
                             for suite in project['suites']:
                                 if (suite['name'] in suites_to_import):
-                                    self.active_project_code = self._short_code(suite['name'])
+                                    if self.config.get('suitesasprojects') == True:
+                                        self.active_project_code = self._short_code(suite['name'])
+                                    else:
+                                        self.active_project_code = project['code']
                                     self._import_test_cases(project['id'], suite['id'])
                                     if self.config.get('runs') == True:
                                         self._import_runs(project['id'], suite['id'])
@@ -152,23 +168,36 @@ class TestRailImporter:
             suites += self.get_suites(project_id, offset + limit, limit)
         return suites
     
-    def _create_suites(self, qase_code: str, testrail_project_id: int, suite_id: Optional[int]):
-        sections = self._get_sections(testrail_project_id, suite_id)
+    def _create_suites(self, qase_code: str, testrail_project_id: int, testrail_suite_id: Optional[int], parent_id: Optional[int] = None):
+        sections = self._get_sections(testrail_project_id, testrail_suite_id)
         for section in sections:
             print(f"[Importer] Creating suite in Qase {qase_code} : {section['name']} ({section['id']})")
             section['description'] = self._check_and_replace_attachments(section['description'], qase_code)
 
-            api_instance = SuitesApi(self.qase)
-            api_response = api_instance.create_suite(
-                code = qase_code.upper(),
-                suite_create=SuiteCreate(
-                    title = section['name'],
-                    description = section['description'] if section['description'] else "",
-                    preconditions="",
-                    parent_id=self.suites_map[qase_code][section['parent_id']] if section['parent_id'] and self.suites_map[qase_code][section['parent_id']] else None
-                )
+            if (section['parent_id'] == None and parent_id != None):
+                section['parent_id'] = parent_id
+
+            self._create_suite(
+                qase_code, 
+                title=section['name'], 
+                description=section['description'], 
+                parent_id=section['parent_id'],
+                testrail_suite_id=section['id']
             )
-            self.suites_map[qase_code][section['id']] = api_response.result.id
+
+    def _create_suite(self, qase_code: str, title: str, description: Optional[str], parent_id: Optional[int] = None, testrail_suite_id: Optional[int] = None):
+        api_instance = SuitesApi(self.qase)
+        api_response = api_instance.create_suite(
+            code = qase_code.upper(),
+            suite_create=SuiteCreate(
+                title = title,
+                description = description if description else "",
+                preconditions="",
+                # parent_id = ID in Qase
+                parent_id=self.suites_map[qase_code][parent_id] if parent_id and self.suites_map[qase_code][parent_id] else None
+            )
+        )
+        self.suites_map[qase_code][testrail_suite_id] = api_response.result.id
     
     # Recursively get all sections
     def _get_sections(self, project_id, suite_id = 0, offset = 0, limit = 3) -> List:
