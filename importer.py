@@ -229,6 +229,8 @@ class TestRailImporter:
 
         code = self._short_code(title)
 
+        print('[Importer] Project code: ' + code)
+
         try:
             api_response = api_instance.create_project(
                 project_create = ProjectCreate(
