@@ -133,14 +133,17 @@ class TestRailImporter:
         qase_users = self._get_qase_users()
 
         for testrail_user in testrail_users:
+            flag = False
             for qase_user in qase_users:
                 if (testrail_user['email'] == qase_user['email'] and testrail_user['is_active'] == True):
                     self.users_map[testrail_user['id']] = qase_user['id']
+                    flag = True
                     print(f"[Importer] User {testrail_user['email']} found in Qase as {qase_user['email']}")
                     break
-            # Not found, using default user
-            self.users_map[testrail_user['id']] = self.config.get('defaultuser')
-            print(f"[Importer] User {testrail_user['email']} not found in Qase, using default user {self.config.get('defaultuser')}")
+            if (flag == False):
+                # Not found, using default user
+                self.users_map[testrail_user['id']] = self.config.get('defaultuser')
+                print(f"[Importer] User {testrail_user['email']} not found in Qase, using default user {self.config.get('defaultuser')}")
     
     def _get_qase_users(self):
         flag = True
