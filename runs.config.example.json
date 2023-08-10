@@ -1,0 +1,28 @@
+{
+    "qase": {
+        "token": "TOKEN",
+        "host": "qase.io"
+    },
+    "db": {
+        "password": "1234",
+        "host": "localhost",
+        "user": "testrail",
+        "database": "testrail"
+    },
+    "projects": [
+        {
+            "name": "Exact name",
+            "suites": ["Revenue"]
+        }
+    ],
+    "defaultuser": 1,
+    "createdafter": 1672524000,
+    "dry": true,
+    "statuses": {
+        "1": "passed",
+        "2": "blocked",
+        "3": "skipped",
+        "4": "skipped",
+        "5": "failed"
+    }
+}
