@@ -484,8 +484,8 @@ class TestRailImporter:
             data = {
                 'id': case['id'],
                 'title': case['title'],
-                'created_at': datetime.fromtimestamp(case['created_on']),
-                'updated_at': datetime.fromtimestamp(case['updated_on']),
+                'created_at': str(datetime.fromtimestamp(case['created_on'])),
+                'updated_at': str(datetime.fromtimestamp(case['updated_on'])),
                 'author_id': self._get_user_id(case['created_by']),
                 'steps': [],
                 'custom_field': {},
