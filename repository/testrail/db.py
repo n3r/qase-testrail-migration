@@ -1,12 +1,13 @@
 import mysql.connector
 
 class TestrailDbRepository:
-    def __init__(self, host, database, user, password):
+    def __init__(self, host, database, user, password, logger):
         self.host = host
         self.database = database
         self.user = user
         self.password = password
         self.connection = None
+        self.logger = logger
 
     def connect(self):
         try:

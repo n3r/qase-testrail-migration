@@ -17,7 +17,7 @@ import json
 
 import requests
 
-class TestRailAPIClient:
+class TestrailApiClient:
     def __init__(self, base_url, user, token):
         if not base_url.endswith('/'):
             base_url += '/'

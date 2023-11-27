@@ -161,5 +161,6 @@ cython_debug/
 
 .DS_Store
 config.json
-runs.config.json
 defects.json
+log.txt
+logifle.txt

@@ -4,52 +4,53 @@
         "host": "<QASE_API_HOST|Default:qase.io>"
     },
     "testrail": {
-        "host": "<TESTRAIL_HOST>",
-        "user": "<TESTRAIL_USER_EMAIL>",
-        "password": "<TESTRAIL_USER_PASSWORD>"
-    },
-    "projects": [
-        "Exact name of project in TestRail",
-        {
-            "name": "Exact name",
-            "suites": ["Suite 1", "Suite 2", "Suite 3"]
+        "connection": "api",
+        "api": {
+            "host": "<TESTRAIL_HOST>",
+            "user": "<TESTRAIL_USER_EMAIL>",
+            "password": "<TESTRAIL_USER_PASSWORD>"
         }
-    ],
-    "preserveids": true,
-    "suitesasprojects": true,
-    "fields": [
-        "steps_separated",
-        "checkbox",
-        "automation_type",
-        "preconds",
-        "steps",
-        "expected",
-        "dropd",
-        "mission"
-    ],
-    "types": {
-        "1": "other",
-        "2": "smoke",
-        "3": "regression",
-        "4": "security",
-        "5": "usability",
-        "6": "performance",
-        "7": "acceptance",
-        "8": "functional",
-        "9": "compatibility",
-        "10": "integration",
-        "11": "exploratory"
     },
-    "priorities": {
-        "0": "not set",
-        "1": "high",
-        "2": "medium",
-        "3": "low"
+    "projects": {
+        "import": [],
+        "completed": true
+    },
+    "tests": {
+        "fields": [],
+        "types": {
+            "1": "other",
+            "2": "smoke",
+            "3": "regression",
+            "4": "security",
+            "5": "usability",
+            "6": "performance",
+            "7": "acceptance",
+            "8": "functional",
+            "9": "compatibility",
+            "10": "integration",
+            "11": "exploratory"
+        },
+        "priorities": {
+            "0": "Not set",
+            "1": "High",
+            "2": "Medium",
+            "3": "Low"
+        },
+        "refs": {
+            "enable": true,
+            "url": "http://localhost:8899/"
+        }
+    },
+    "runs": {
+        "createdafter": 1672524000,
+        "statuses": {
+            "1": "passed",
+            "2": "blocked",
+            "3": "skipped",
+            "4": "skipped",
+            "5": "failed"
+        }
     },
     "defaultuser": 1,
-    "threads": 5,
-    "refs": {
-        "enable": true,
-        "url": "http://localhost:8000/"
-    }
+    "threads": 3
 }
