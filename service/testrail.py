@@ -60,4 +60,13 @@ class TestrailService:
         return self.api_repository.get_attachment(attachment_id)
     
     def get_test(self, test_id: int):
-        return self.api_repository.get_test(test_id)
+        return self.repository.get_test(test_id)
+    
+    def get_tests(self, run_id: int, limit: int = 250, offset: int = 0):
+        return self.repository.get_tests(run_id, limit, offset)
+    
+    def get_plans(self, project_id: int, limit: int = 250, offset: int = 0):
+        return self.repository.get_plans(project_id, limit, offset)
+    
+    def get_plan(self, plan_id: int):
+        return self.repository.get_plan(plan_id)

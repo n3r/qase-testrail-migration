@@ -44,18 +44,33 @@ class Runs:
 
     def _import_run(self, project: list, run: list) -> None:
         
-        qase_run_id = self.qase.create_run(run, project['code'])
+        # Load testrail tests from the run ()
+        cases_map = self.__get_cases_for_run(run)
+        self.logger.log(f'Found {str(len(cases_map))} cases in the run {run["name"]} [{run["id"]}]')
+
+        # Create a new test run in Qase
+        qase_run_id = self.qase.create_run(run, project['code'], list(cases_map.values()))
+
+        if (qase_run_id != None):
+            self.logger.log(f'Created a new run in Qase: {qase_run_id}')
+
+            # Import results for the run
+            self._import_results_for_run(run, qase_run_id, project, cases_map)
+        else:
+            self.logger.log(f'Failed to create a new run in Qase for TestRail run {run["name"]} [{run["id"]}]')
+
+    def _import_results_for_run(self, run: list, qase_run_id: str, project: list, cases_map: dict) -> None:
         limit = 250
         offset = 0
 
         process = True
 
         while process == True:
-            process = self._import_results(run, qase_run_id, project['code'], limit, offset)
+            process = self._import_results(run, qase_run_id, project['code'], cases_map, limit, offset)
             offset = offset + limit
 
 
-    def _import_results(self, tr_run, qase_run_id, qase_code, limit, offset) -> None:
+    def _import_results(self, tr_run, qase_run_id, qase_code, cases_map, limit, offset) -> None:
         testrail_results = self.testrail.get_results(tr_run['id'], limit, offset)
         self.qase.send_bulk_results(
             tr_run,
@@ -64,11 +79,41 @@ class Runs:
             qase_code,
             self.config.get('runs_statuses'),
             self.mappings,
-            self.testrail
+            cases_map
         )
         if len(testrail_results) < limit:
             return False
         return True
 
     def import_plans(self, project: list) -> None:
-        return
+        limit = 250
+        offset = 0
+
+        process = True
+
+        while process == True:
+            plans = self.testrail.get_plans(project['testrail_id'], limit, offset)
+            for plan in plans['plans']:
+                plan = self.testrail.get_plan(plan['id'])
+                if 'entries' in plan and plan['entries'] and len(plan['entries']) > 0:
+                    for entry in plan['entries']:
+                        for run in entry['runs']:
+                            self._import_run(project, run)
+            if plans['size'] < limit:
+                process = False
+            offset = offset + limit
+    
+    def __get_cases_for_run(self, run: list) -> dict:
+        cases_map = {}
+        limit = 250
+        offset = 0
+        process = True
+
+        while process == True:
+            tests = self.testrail.get_tests(run['id'], limit, offset)
+            if tests['size'] < limit:
+                process = False
+            offset = offset + limit
+            for test in tests['tests']:
+                cases_map[test['id']] = test['case_id']
+        return cases_map

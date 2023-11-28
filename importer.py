@@ -87,13 +87,15 @@ class TestRailImporter:
                 ).import_cases(project)
 
                 # Step 8. Import runs
-                Runs(
+                runs_importer = Runs(
                     self.qase_service, 
                     self.testrail_service, 
                     self.logger, 
                     self.mappings, 
                     self.config
-                ).import_runs(project)
+                )
 
-                exit()
+                runs_importer.import_runs(project)
+                runs_importer.import_plans(project)
+
             exit()

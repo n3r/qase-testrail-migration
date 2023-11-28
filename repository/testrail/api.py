@@ -148,17 +148,17 @@ class TestrailApiRepository:
     def get_attachment(self, attachment):
         return self._send_get('get_attachment/' + str(attachment))
     
-    def count_plans(self, project_id: int, suite_id: int = 0, created_after: int = 0) -> int:
-        uri = 'get_plans/' + str(project_id) + f'&limit=1'
-        if (created_after > 0):
-            uri += f'&created_after={created_after}'
-        if (suite_id > 0):
-            uri += f'&suite_id={suite_id}'
-        result = self._send_get(uri)
-        return result['size']
-    
     def get_test(self, test_id: int):
         return self._send_get('get_test/' + str(test_id))
+    
+    def get_tests(self, run_id: int, limit: int = 250, offset: int = 0):
+        return self._send_get('get_tests/' + str(run_id) + f'&limit={limit}&offset={offset}')
+    
+    def get_plans(self, project_id: int, limit: int = 250, offset: int = 0):
+        return self._send_get('get_plans/' + str(project_id) + f'&limit={limit}&offset={offset}')
+    
+    def get_plan(self, plan_id: int):
+        return self._send_get('get_plan/' + str(plan_id))
 
 class APIError(Exception):
     pass

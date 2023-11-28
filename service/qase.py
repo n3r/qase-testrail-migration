@@ -42,7 +42,7 @@ class QaseService:
             if (api_response.status and api_response.result.entities):
                 return api_response.result.entities
         except ApiException as e:
-            print("Exception when calling AuthorsApi->get_authors: %s\n" % e)
+            self.logger.log("Exception when calling AuthorsApi->get_authors: %s\n" % e)
     
     def get_all_users(self, batch_size = 100):
         flag = True
@@ -174,7 +174,7 @@ class QaseService:
             self.logger.log("Exception when calling CasesApi->bulk: %s\n" % e)
         return False
     
-    def create_run(self, run: list, project_code: str):
+    def create_run(self, run: list, project_code: str, cases: list = []):
         api_instance = RunsApi(self.client)
 
         data = {
@@ -185,6 +185,9 @@ class QaseService:
         if (run['is_completed']):
             data['end_time'] = datetime.fromtimestamp(run['completed_on']).strftime('%Y-%m-%d %H:%M:%S')
 
+        if (len(cases) > 0):
+            data['cases'] = cases
+
         try:
             response = api_instance.create_run(code=project_code, run_create=RunCreate(**data))
             self.logger.log(f'Run was created: {response.result.id}')
@@ -192,7 +195,7 @@ class QaseService:
         except Exception as e:
             self.logger.log(f'Exception when calling RunsApi->create_run: {e}')
 
-    def send_bulk_results(self, tr_run, results, qase_run_id, qase_code, status_map, mappings, testrail_client):
+    def send_bulk_results(self, tr_run, results, qase_run_id, qase_code, status_map, mappings, cases_map):
         res = []
 
         if (results):
@@ -210,10 +213,8 @@ class QaseService:
                     else:
                         start_time = tr_run['created_on'] - elapsed
 
-                    t = testrail_client.get_test(result['test_id'])
-
                     data = {
-                        "case_id": t["case_id"],
+                        "case_id": cases_map[result['test_id']],
                         "status": status_map.get(str(result["status_id"]), "skipped"),
                         "time_ms": elapsed*1000, # converting to miliseconds
                         "comment": str(result['comment'])
