@@ -22,21 +22,33 @@ class Runs:
         self.project = project
 
         self.created_after = self.config.get('runs_createdafter')
-        self.index = {}
-
-    def build_index(self) -> None:
-        return
+        self.index = []
 
     def import_runs(self) -> None:
-        suite_id = 0
+        self.logger.log(f'[{self.project["code"]}] Importing runs from TestRail project {self.project["name"]}')
+        self._build_index()
+        self.logger.log(f'[{self.project["code"]}] Found {str(len(self.index))} runs')
+        self.logger.log(f'[{self.project["code"]}] Sorting runs by creation date')
+        self.index.sort(key=lambda x: x['created_on'])
+        self.logger.log(f'[{self.project["code"]}] Importing runs')
+        for run in self.index:
+            self._import_run(run)
+
+    def _build_index(self) -> None:
+        self.logger.log(f'[{self.project["code"]}] Building runs index')
+        if self.project['suite_mode'] == 3:
+            for suite_id in self.mappings.suites[self.project['code']]:
+                self._build_runs_index_for_suite(suite_id)
+        else:
+            self._build_runs_index_for_suite(0)
+        self._build_plans_index()
+
+    def _build_runs_index_for_suite(self, suite_id: int) -> None:
+        self.logger.log(f'[{self.project["code"]}] Building runs index for suite {suite_id}')
         limit = 250
         offset = 0
-        if ('suite_id' in self.project and self.project['suite_id'] > 0):
-            suite_id = self.project['suite_id']
 
-        process = True
-            
-        while process == True:
+        while True:
             runs = self.testrail.get_runs(
                 project_id = self.project['testrail_id'],
                 suite_id = suite_id,
@@ -46,10 +58,41 @@ class Runs:
             )
             # Process the runs in the current batch
             for run in runs:
-                self._import_run(run)
+                self.index.append({
+                    'id': run['id'],
+                    'name': run['name'],
+                    'created_on': run['created_on'],
+                    'completed_on': run['completed_on'],
+                    'is_completed': run['is_completed'],
+                })
 
             if len(runs) < limit:
-                process = False
+                break
+
+            offset = offset + limit
+
+    def _build_plans_index(self) -> None:
+        self.logger.log(f'[{self.project["code"]}] Building plans index')
+        limit = 250
+        offset = 0
+
+        while True:
+            plans = self.testrail.get_plans(self.project['testrail_id'], limit, offset)
+            for plan in plans['plans']:
+                plan = self.testrail.get_plan(plan['id'])
+                if 'entries' in plan and plan['entries'] and len(plan['entries']) > 0:
+                    for entry in plan['entries']:
+                        for run in entry['runs']:
+                            self.index.append({
+                                'id': run['id'],
+                                'name': run['name'],
+                                'created_on': run['created_on'],
+                                'completed_on': run['completed_on'],
+                                'plan_id': plan['id'],
+                                'is_completed': run['is_completed'],
+                            })
+            if plans['size'] < limit:
+                break
 
             offset = offset + limit
 
@@ -95,24 +138,6 @@ class Runs:
             return False
         return True
 
-    def import_plans(self) -> None:
-        limit = 250
-        offset = 0
-
-        process = True
-
-        while process == True:
-            plans = self.testrail.get_plans(self.project['testrail_id'], limit, offset)
-            for plan in plans['plans']:
-                plan = self.testrail.get_plan(plan['id'])
-                if 'entries' in plan and plan['entries'] and len(plan['entries']) > 0:
-                    for entry in plan['entries']:
-                        for run in entry['runs']:
-                            self._import_run(run)
-            if plans['size'] < limit:
-                process = False
-            offset = offset + limit
-    
     def __get_cases_for_run(self, run: list) -> dict:
         cases_map = {}
         limit = 250
