@@ -42,7 +42,7 @@ class QaseService:
             if (api_response.status and api_response.result.entities):
                 return api_response.result.entities
         except ApiException as e:
-            self.logger.log("Exception when calling AuthorsApi->get_authors: %s\n" % e)
+            self.lo("Exception when calling AuthorsApi->get_authors: %s\n" % e)
     
     def get_all_users(self, batch_size = 100):
         flag = True
@@ -67,7 +67,7 @@ class QaseService:
         except ApiException as e:
             self.logger.log("Exception when calling CustomFieldsApi->get_custom_fields: %s\n" % e)
 
-    def create_custom_field(self, data, field):
+    def create_custom_field(self, data, field) -> int:
         try:
             api_instance = CustomFieldsApi(self.client)
             # Create a custom field.
@@ -75,13 +75,11 @@ class QaseService:
             if (api_response.status == False):
                 self.logger.log('Error creating custom field: ' + field['name'])
             else:
-                field['qase_id'] = api_response.result.id
-                self.custom_fields_map[field['name']] = field
                 self.logger.log('Custom field created: ' + field['name'])
                 return api_response.result.id
         except ApiException as e:
             self.logger.log('Exception when calling CustomFieldsApi->create_custom_field: %s\n' % e)
-        return None
+        return 0
     
     def prepare_custom_field_data(self, field, mappings) -> dict:
         data = {

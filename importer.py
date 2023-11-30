@@ -92,10 +92,12 @@ class TestRailImporter:
                     self.testrail_service, 
                     self.logger, 
                     self.mappings, 
-                    self.config
+                    self.config,
+                    project
                 )
 
-                runs_importer.import_runs(project)
-                runs_importer.import_plans(project)
+                runs_importer.build_index()
+                runs_importer.import_runs()
+                runs_importer.import_plans()
 
             exit()

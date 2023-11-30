@@ -75,11 +75,17 @@ class Projects:
         return code[:10]  # truncate to 10 characters
     
     def _short_code(self, s: str) -> str:
-        # Remove all characters except letters
-        s = re.sub('[^a-zA-Z]', '', s)
+        s = s.replace("-", " ")  # Replace dashes with spaces
 
+        # Remove all characters except letters
+        s = re.sub('[^a-zA-Z ]', '', s)
+
+        words = s.split()
         # Ensure the first character is a letter and make it uppercase
-        code = ''.join(word[0] for word in s.split()).upper()
+        if len(words) > 1:  # if the string contains multiple words
+            code = ''.join(word[0] for word in words).upper()
+        else:
+            code = s.upper()
 
         # Truncate to 10 characters
         code = code[:10]
