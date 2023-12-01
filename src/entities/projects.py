@@ -1,9 +1,6 @@
-from service.qase import QaseService
-from service.testrail import TestrailService
-from support.logger import Logger
-from support.mappings import Mappings
-from support.config_manager import ConfigManager as Config
-from typing import List, Optional, Union
+from ..service import QaseService, TestrailService
+from ..support import Logger, Mappings, ConfigManager as Config
+from typing import Optional, Union
 
 import re
 

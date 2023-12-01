@@ -1,10 +1,7 @@
 import json
 
-from service.qase import QaseService
-from service.testrail import TestrailService
-from support.logger import Logger
-from support.mappings import Mappings
-from support.config_manager import ConfigManager as Config
+from ..service import QaseService, TestrailService
+from ..support import Logger, Mappings, ConfigManager as Config
 
 class Fields:
     def __init__(
@@ -83,7 +80,10 @@ class Fields:
                     return
 
         data = self.qase.prepare_custom_field_data(field, self.mappings)
-        self.qase.create_custom_field(data, field)
+        qase_id = self.qase.create_custom_field(data, field)
+        if qase_id > 0:
+            field['qase_id'] = qase_id
+            self.mappings.custom_fields[field['name']] = field
         
     def _create_refs_field(self, qase_custom_fields):
         if self.config.get('tests_refs_enable'):

@@ -1,5 +1,4 @@
-from support.config_manager import ConfigManager
-from support.logger import Logger
+from ..support import ConfigManager, Logger
 
 import certifi
 import json
@@ -20,7 +19,7 @@ from qaseio.models import SuiteCreate, CustomFieldCreate, CustomFieldCreateValue
 from datetime import datetime
 
 from qaseio.exceptions import ApiException
-from exceptions import ImportException
+from ..exceptions import ImportException
 
 class QaseService:
     def __init__(self, config: ConfigManager, logger: Logger):

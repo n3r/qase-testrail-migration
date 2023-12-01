@@ -1,5 +1,4 @@
-from repository.testrail.api import TestrailApiRepository
-from repository.testrail.db import TestrailDbRepository
+from ..repository.testrail import TestrailApiRepository, TestrailDbRepository
 
 class TestrailService:
     def __init__(self, config, logger):

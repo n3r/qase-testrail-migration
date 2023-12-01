@@ -160,6 +160,10 @@ cython_debug/
 #.idea/
 
 .DS_Store
+
+cache/
+logs/*
+
 config.json
 defects.json
 log.txt

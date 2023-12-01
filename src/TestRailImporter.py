@@ -1,17 +1,6 @@
-from support.config_manager import ConfigManager
-from support.logger import Logger
-from support.mappings import Mappings
-
-from service.qase import QaseService
-from service.testrail import TestrailService
-
-from entities.users import Users
-from entities.fields import Fields
-from entities.projects import Projects
-from entities.suites import Suites
-from entities.cases import Cases
-from entities.runs import Runs
-from entities.milestones import Milestones
+from .support import ConfigManager, Logger, Mappings
+from .service import QaseService, TestrailService
+from .entities import Users, Fields, Projects, Suites, Cases, Runs, Milestones
 
 class TestRailImporter:
     def __init__(self, config: ConfigManager, logger: Logger) -> None:

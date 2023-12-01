@@ -17,14 +17,6 @@ class ConfigManager:
         except Exception as e:
             print(f"⚠️  Failed to load config from file {self.config_file}: {e}")
 
-        # Load from env vars
-        try:
-            for key, value in os.environ.items():
-                if key.startswith(self.env_vars_prefix):
-                    self._set_config(key[len(self.env_vars_prefix):].lower(), value)
-        except Exception as e:
-            print(f"⚠️  Failed to load config from env vars: {e}")
-
     def get(self, key):
         return self._get_config(key)
 

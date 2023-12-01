@@ -1,20 +1,16 @@
-from importer import TestRailImporter
-from support.config_manager import ConfigManager
-from support.logger import Logger
+from src import TestRailImporter
+from src.support.config_manager import ConfigManager
+from src.support.logger import Logger
 
 config = ConfigManager()
-config.load_config()
+try:
+    config.load_config()
+except Exception as e:
+    config.build_config()
 
 logger = Logger(config.get('debug'), config.get('logfile'))
-
-logger.log('Init importer')
 
 # Init
 importer = TestRailImporter(config, logger)
 
-logger.log('Start import')
-
-# Loading projects from test rail
 importer.start()
-
-logger.log('Import finished')

@@ -1,13 +1,10 @@
-from service.qase import QaseService
-from service.testrail import TestrailService
-from support.logger import Logger
-from support.mappings import Mappings
-from support.config_manager import ConfigManager as Config
+from ..service import QaseService, TestrailService
+from ..support import Logger, Mappings, ConfigManager as Config
 
 from qaseio.models import BulkRequestCasesInner, TestStepCreate
 from concurrent.futures import ThreadPoolExecutor
 
-from entities.attachments import Attachments
+from .attachments import Attachments
 
 from typing import List, Optional, Union
 

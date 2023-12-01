@@ -1,7 +1,5 @@
-from service.qase import QaseService
-from service.testrail import TestrailService
-from support.logger import Logger
-from support.mappings import Mappings
+from ..service import QaseService, TestrailService
+from ..support import Logger, Mappings
 
 from typing import List
 

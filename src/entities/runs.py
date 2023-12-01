@@ -1,10 +1,5 @@
-from service.qase import QaseService
-from service.testrail import TestrailService
-from support.logger import Logger
-from support.mappings import Mappings
-from support.config_manager import ConfigManager as Config
-
-import json
+from ..service import QaseService, TestrailService
+from ..support import Logger, Mappings, ConfigManager as Config
 
 class Runs:
     def __init__(self, 
