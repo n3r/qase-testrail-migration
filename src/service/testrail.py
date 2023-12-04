@@ -1,12 +1,17 @@
 from ..repository.testrail import TestrailApiRepository, TestrailDbRepository
+from ..api.testrail import TestrailApiClient
 
 class TestrailService:
     def __init__(self, config, logger):
         self.db_repository = None
         self.api_repository = TestrailApiRepository(
-            base_url = config.get('testrail_api_host'),
-            user = config.get('testrail_api_user'),
-            token = config.get('testrail_api_password')
+            TestrailApiClient(
+                base_url = config.get('testrail_api_host'),
+                user = config.get('testrail_api_user'),
+                token = config.get('testrail_api_password'),
+                max_retries = 3,
+                backoff_factor = 1
+            )
         )
 
         self.logger = logger

@@ -1,97 +1,52 @@
-"""TestRail API binding for Python 3.x.
-
-(API v2, available since TestRail 3.0)
-
-Compatible with TestRail 3.0 and later.
-
-Learn more:
-
-http://docs.gurock.com/testrail-api2/start
-http://docs.gurock.com/testrail-api2/accessing
-
-Copyright Gurock Software GmbH. See license.md for details.
-"""
-
 import base64
-import json
-
+import time
 import requests
 
 class TestrailApiClient:
-    def __init__(self, base_url, user, token):
+    def __init__(self, base_url, user, token, max_retries=3, backoff_factor=1):
         if not base_url.endswith('/'):
             base_url += '/'
         self.__url = base_url + 'index.php?/api/v2/'
-        self.user = user
-        self.token = token
-
-    def send_get(self, uri, filepath=None):
-        """Issue a GET request (read) against the API.
-
-        Args:
-            uri: The API method to call including parameters, e.g. get_case/1.
-            filepath: The path and file name for attachment download; used only
-                for 'get_attachment/:attachment_id'.
-
-        Returns:
-            A dict containing the result of the request.
-        """
-        return self.__send_request('GET', uri, filepath)
-
-    def send_post(self, uri, data):
-        """Issue a POST request (write) against the API.
-
-        Args:
-            uri: The API method to call, including parameters, e.g. add_case/1.
-            data: The data to submit as part of the request as a dict; strings
-                must be UTF-8 encoded. If adding an attachment, must be the
-                path to the file.
-
-        Returns:
-            A dict containing the result of the request.
-        """
-        return self.__send_request('POST', uri, data)
-
-    def __send_request(self, method, uri, data):
-        url = self.__url + uri
 
         auth = str(
             base64.b64encode(
-                bytes('%s:%s' % (self.user, self.token), 'utf-8')
+                bytes('%s:%s' % (user, token), 'utf-8')
             ),
             'ascii'
         ).strip()
-        headers = {'Authorization': 'Basic ' + auth}
 
-        if method == 'POST':
-            if uri[:14] == 'add_attachment':    # add_attachment API method
-                files = {'attachment': (open(data, 'rb'))}
-                response = requests.post(url, headers=headers, files=files)
-                files['attachment'].close()
+        self.headers = {
+            'Authorization': 'Basic ' + auth,
+            'Content-Type': 'application/json'
+        }
+        self.max_retries = max_retries
+        self.backoff_factor = backoff_factor
+
+    def get(self, uri):
+        return self.send_request(requests.get, uri)
+
+    def send_request(self, request_method, uri, payload=None):
+        url = self.__url + uri
+        for attempt in range(self.max_retries + 1):
+            response = request_method(url, headers=self.headers, data=payload)
+
+            if response.status_code != 429 and response.status_code <= 201:
+                return self.process_response(response, uri)
+            elif attempt == self.max_retries:
+                break
             else:
-                headers['Content-Type'] = 'application/json'
-                payload = bytes(json.dumps(data), 'utf-8')
-                response = requests.post(url, headers=headers, data=payload)
-        else:
-            headers['Content-Type'] = 'application/json'
-            response = requests.get(url, headers=headers)
+                time.sleep(self.backoff_factor * (2 ** attempt))
 
-        if response.status_code > 201:
+        raise APIError('Max retries reached or server error.')
+
+    def process_response(self, response, uri):
+        if uri[:15] == 'get_attachment/':
+            return response
+        else:
             try:
-                error = response.json()
-            except:     # response.content not formatted as JSON
-                error = str(response.content)
-            raise APIError('TestRail API returned HTTP %s (%s)' % (response.status_code, error))
-        else:
-            if uri[:15] == 'get_attachment/':   # Expecting file, not JSON
-                return response
-            else:
-                try:
-                    return response.json()
-                except: # Nothing to return
-                    return {}
-
-
+                return response.json()
+            except:
+                raise APIError('Failed to parse JSON response')
 
 class APIError(Exception):
     pass
