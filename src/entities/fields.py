@@ -57,7 +57,7 @@ class Fields:
 
     def _get_fields_to_import(self, custom_fields):
         self.logger.log('Building a map for fields to import')
-        fields_to_import = self.config.get('tests_fields')
+        fields_to_import = self.config.get('tests.fields')
         if fields_to_import is not None and len(fields_to_import) == 0 and not fields_to_import:
             for field in custom_fields:
                 if field['system_name'].startswith('custom_'):
@@ -86,7 +86,7 @@ class Fields:
             self.mappings.custom_fields[field['name']] = field
         
     def _create_refs_field(self, qase_custom_fields):
-        if self.config.get('tests_refs_enable'):
+        if self.config.get('tests.refs.enable'):
             field = None
             if (qase_custom_fields and len(qase_custom_fields) > 0):
                 for qase_field in qase_custom_fields:
@@ -111,7 +111,7 @@ class Fields:
         self.logger.log('Creating types map')
 
         tr_types = self.testrail.get_case_types()
-        qase_types = self.config.get('tests_types')
+        qase_types = self.config.get('tests.types')
 
         for tr_type in tr_types:
             self.mappings.types[tr_type['id']] = 1
@@ -125,7 +125,7 @@ class Fields:
         self.logger.log('Creating priorities map')
 
         tr_priorities = self.testrail.get_priorities()
-        qase_priorities = self.config.get('tests_priorities')
+        qase_priorities = self.config.get('tests.priorities')
         for tr_priority in tr_priorities:
             self.mappings.priorities[tr_priority['id']] = 1
             for qase_priority_id in qase_priorities:

@@ -12,7 +12,7 @@ class TestRailImporter:
 
         self.active_project_code = None
 
-        self.mappings = Mappings(self.config.get('defaultuser'))
+        self.mappings = Mappings(self.config.get('default_user'))
 
     def start(self):
         #try:

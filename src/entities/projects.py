@@ -45,11 +45,11 @@ class Projects:
     def _check_import(self, title: str, is_completed: bool) -> bool:
 
         # If the project is completed and import_completed is False, skip the project
-        if is_completed and not self.config.get('projects_completed'):
+        if is_completed and not self.config.get('projects.completed'):
             return False
 
         # If project name is in the list of projects to import, return True
-        projects = self.config.get('projects_import')
+        projects = self.config.get('projects.import')
         if not projects:
             return True
         for project in projects:

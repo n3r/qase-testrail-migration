@@ -6,9 +6,9 @@ class TestrailService:
         self.db_repository = None
         self.api_repository = TestrailApiRepository(
             TestrailApiClient(
-                base_url = config.get('testrail_api_host'),
-                user = config.get('testrail_api_user'),
-                token = config.get('testrail_api_password'),
+                base_url = config.get('testrail.api.host'),
+                user = config.get('testrail.api.user'),
+                token = config.get('testrail.api.password'),
                 max_retries = 3,
                 backoff_factor = 1
             )
@@ -17,10 +17,10 @@ class TestrailService:
         self.logger = logger
 
         if config.get('testrail_db_host'):
-            self.db_repository = TestrailDbRepository(host=config.get('testrail_db_host'),
-                             database=config.get('testrail_db_database'),
-                             user=config.get('testrail_db_user'),
-                             password=config.get('testrail_db_password'))
+            self.db_repository = TestrailDbRepository(host=config.get('testrail.db.host'),
+                             database=config.get('testrail.db.database'),
+                             user=config.get('testrail.db.user'),
+                             password=config.get('testrail.db.password'))
             self.db_repository.connect()
 
         if self.db_repository:
@@ -74,3 +74,6 @@ class TestrailService:
     
     def get_plan(self, plan_id: int):
         return self.repository.get_plan(plan_id)
+    
+    def get_milestones(self, project_id: int):
+        return self.repository.get_milestones(project_id)

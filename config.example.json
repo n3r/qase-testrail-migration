@@ -42,7 +42,7 @@
         }
     },
     "runs": {
-        "createdafter": 1672524000,
+        "created_after": 1672524000,
         "statuses": {
             "1": "passed",
             "2": "blocked",
@@ -51,6 +51,6 @@
             "5": "failed"
         }
     },
-    "defaultuser": 1,
+    "default_user": 1,
     "threads": 3
 }

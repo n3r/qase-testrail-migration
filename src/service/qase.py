@@ -27,8 +27,8 @@ class QaseService:
         self.logger = logger
 
         configuration = Configuration()
-        configuration.api_key['TokenAuth'] = config.get('qase_token')
-        configuration.host = f'https://api.{config.get("qase_host")}/v1'
+        configuration.api_key['TokenAuth'] = config.get('qase.token')
+        configuration.host = f'https://api.{config.get("qase.host")}/v1'
         configuration.ssl_ca_cert = certifi.where()
 
         self.client = ApiClient(configuration)

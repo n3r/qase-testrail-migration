@@ -89,9 +89,9 @@ class Cases:
     
     # Done
     def _set_refs(self, case:dict, data: dict):
-        if self.mappings.refs_id and case['refs'] and self.config.get('refs_enable'):
+        if self.mappings.refs_id and case['refs'] and self.config.get('tests.refs.enable'):
             string = str(case['refs'])
-            url = str(self.config.get('refs_url'))
+            url = str(self.config.get('refs.url'))
             if string.startswith('http'):
                 data['custom_field'][str(self.mappings.refs_id)] = quote(string, safe="/:")
             elif url != '':

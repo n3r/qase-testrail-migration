@@ -37,31 +37,16 @@ class TestrailApiRepository:
             uri += f'&suite_id={suite_id}'
         return self.client.get(uri)
     
-    def count_runs(self, project_id: int, suite_id: int = 0, created_after: int = 0) -> int:
-        uri = 'get_runs/' + str(project_id) + f'&limit=1'
-        if (created_after > 0):
-            uri += f'&created_after={created_after}'
-        if (suite_id > 0):
-            uri += f'&suite_id={suite_id}'
-        result = self.client.get(uri)
-        return result['size']
-    
     def get_runs(self, project_id: int, suite_id: int = 0, created_after: int = 0, limit: int = 250, offset: int = 0):
         uri = 'get_runs/' + str(project_id) + f'&limit={limit}&offset={offset}'
         if (created_after > 0):
             uri += f'&created_after={created_after}'
         if (suite_id > 0):
             uri += f'&suite_id={suite_id}'
-        result = self.client.get(uri)
-        return result['runs']
-    
-    def count_results(self, run_id: int):
-        result = self.client.get('get_results_for_run/' + str(run_id) + f'&limit=1')
-        return result['size']
+        return self.client.get(uri)
     
     def get_results(self, run_id: int, limit: int = 250, offset: int = 0):
-        result = self.client.get('get_results_for_run/' + str(run_id) + f'&limit={limit}&offset={offset}')
-        return result['results']
+        return self.client.get('get_results_for_run/' + str(run_id) + f'&limit={limit}&offset={offset}')
     
     def get_attachment(self, attachment):
         return self.client.get('get_attachment/' + str(attachment))

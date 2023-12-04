@@ -16,7 +16,7 @@ class Runs:
         self.mappings = mappings
         self.project = project
 
-        self.created_after = self.config.get('runs_createdafter')
+        self.created_after = self.config.get('runs.created_after')
         self.index = []
 
     def import_runs(self) -> None:
@@ -52,7 +52,7 @@ class Runs:
                 offset = offset
             )
             # Process the runs in the current batch
-            for run in runs:
+            for run in runs['runs']:
                 self.index.append({
                     'id': run['id'],
                     'name': run['name'],
@@ -61,7 +61,7 @@ class Runs:
                     'is_completed': run['is_completed'],
                 })
 
-            if len(runs) < limit:
+            if runs['size'] < limit:
                 break
 
             offset = offset + limit
@@ -117,19 +117,18 @@ class Runs:
             process = self._import_results(run, qase_run_id, cases_map, limit, offset)
             offset = offset + limit
 
-
     def _import_results(self, tr_run, qase_run_id, cases_map, limit, offset) -> None:
-        testrail_results = self.testrail.get_results(tr_run['id'], limit, offset)
+        results = self.testrail.get_results(tr_run['id'], limit, offset)
         self.qase.send_bulk_results(
             tr_run,
-            testrail_results,
+            results['results'],
             qase_run_id,
             self.project['code'],
-            self.config.get('runs_statuses'),
+            self.config.get('runs.statuses'),
             self.mappings,
             cases_map
         )
-        if len(testrail_results) < limit:
+        if results['size'] < limit:
             return False
         return True
 
