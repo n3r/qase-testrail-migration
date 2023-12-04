@@ -13,8 +13,9 @@ from qaseio.api.cases_api import CasesApi
 from qaseio.api.runs_api import RunsApi
 from qaseio.api.results_api import ResultsApi
 from qaseio.api.attachments_api import AttachmentsApi
+from qaseio.api.milestones_api import MilestonesApi
 
-from qaseio.models import SuiteCreate, CustomFieldCreate, CustomFieldCreateValueInner, ProjectCreate, BulkRequest, RunCreate, ResultCreateBulk
+from qaseio.models import SuiteCreate, MilestoneCreate, CustomFieldCreate, CustomFieldCreateValueInner, ProjectCreate, BulkRequest, RunCreate, ResultCreateBulk
 
 from datetime import datetime
 
@@ -171,7 +172,7 @@ class QaseService:
             self.logger.log("Exception when calling CasesApi->bulk: %s\n" % e)
         return False
     
-    def create_run(self, run: list, project_code: str, cases: list = []):
+    def create_run(self, run: list, project_code: str, cases: list = [], milestone_id = None):
         api_instance = RunsApi(self.client)
 
         data = {
@@ -181,6 +182,9 @@ class QaseService:
 
         if (run['is_completed']):
             data['end_time'] = datetime.fromtimestamp(run['completed_on']).strftime('%Y-%m-%d %H:%M:%S')
+
+        if milestone_id:
+            data['milestone_id'] = milestone_id
 
         if (len(cases) > 0):
             data['cases'] = cases
@@ -264,3 +268,22 @@ class QaseService:
                 return response[0]
         except Exception as e:
             self.logger.log(f'Exception when calling AttachmentsApi->upload_attachment: {e}')
+
+    def create_milestone(self, project_code, title, description, status, due_date):
+        data = {
+            'project_code': project_code,
+            'title': title
+        }
+
+        if description:
+            data['description']: description
+
+        if due_date:
+            data['due_date'] = due_date
+
+        api_instance = MilestonesApi(self.client)
+        api_response = api_instance.create_milestone(
+            code = project_code,
+            milestone_create=MilestoneCreate(**data)
+        )
+        return api_response.result.id

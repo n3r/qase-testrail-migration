@@ -1,10 +1,14 @@
 import datetime
+import os
 
 class Logger:
-    def __init__(self, debug: bool = False, log_file: str = './log.txt'):
-        if log_file == None:
-            log_file = './log.txt'
-        self.log_file = log_file
+    def __init__(self, debug: bool = False):
+        now = datetime.datetime.now()
+        timestamp = now.strftime("%Y%m%d_%H%M%S")
+        log_dir = './logs'
+        if not os.path.exists(log_dir):
+            os.makedirs(log_dir)
+        self.log_file = os.path.join(log_dir, f'{timestamp}.log')
         self.debug = debug
         with open(self.log_file, 'w'):
             pass
@@ -15,7 +19,6 @@ class Logger:
         log = f"[{time_str}] {message}\n"
         if self.debug:
             print(log)
-            print()
         with open(self.log_file, 'a') as f:
             f.write(log)
 

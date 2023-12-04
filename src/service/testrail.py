@@ -75,5 +75,5 @@ class TestrailService:
     def get_plan(self, plan_id: int):
         return self.repository.get_plan(plan_id)
     
-    def get_milestones(self, project_id: int):
-        return self.repository.get_milestones(project_id)
+    def get_milestones(self, project_id: int, limit: int = 250, offset: int = 0):
+        return self.repository.get_milestones(project_id, limit, offset)

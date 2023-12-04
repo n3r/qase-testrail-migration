@@ -59,6 +59,7 @@ class Runs:
                     'created_on': run['created_on'],
                     'completed_on': run['completed_on'],
                     'is_completed': run['is_completed'],
+                    'milestone_id': run['milestone_id']
                 })
 
             if runs['size'] < limit:
@@ -85,6 +86,7 @@ class Runs:
                                 'completed_on': run['completed_on'],
                                 'plan_id': plan['id'],
                                 'is_completed': run['is_completed'],
+                                'milestone_id': run['milestone_id']
                             })
             if plans['size'] < limit:
                 break
@@ -96,8 +98,10 @@ class Runs:
         cases_map = self.__get_cases_for_run(run)
         self.logger.log(f'Found {str(len(cases_map))} cases in the run {run["name"]} [{run["id"]}]')
 
+        milestone_id = self.mappings.milestones[self.project['code']][run['milestone_id']] if run['milestone_id'] in self.mappings.milestones[self.project['code']] else None
+
         # Create a new test run in Qase
-        qase_run_id = self.qase.create_run(run, self.project['code'], list(cases_map.values()))
+        qase_run_id = self.qase.create_run(run, self.project['code'], list(cases_map.values()), milestone_id)
 
         if (qase_run_id != None):
             self.logger.log(f'Created a new run in Qase: {qase_run_id}')

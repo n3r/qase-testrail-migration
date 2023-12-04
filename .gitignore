@@ -162,9 +162,7 @@ cython_debug/
 .DS_Store
 
 cache/
-logs/*
+logs/
+output/
 
 config.json
-defects.json
-log.txt
-logifle.txt

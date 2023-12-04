@@ -62,3 +62,6 @@ class TestrailApiRepository:
     
     def get_plan(self, plan_id: int):
         return self.client.get('get_plan/' + str(plan_id))
+    
+    def get_milestones(self, project_id: int, limit: int = 250, offset: int = 0):
+        return self.client.get('get_milestones/' + str(project_id) + f'&limit={limit}&offset={offset}')

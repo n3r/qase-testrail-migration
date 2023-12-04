@@ -49,6 +49,14 @@ class TestRailImporter:
                                         + (' (' 
                                         + project['suite_title'] 
                                         + ')' if 'suite_title' in project else ''))
+                
+                self.mappings = Milestones(
+                    self.qase_service, 
+                    self.testrail_service, 
+                    self.logger, 
+                    self.mappings,
+                ).import_milestones(project)
+
                 self.mappings = Suites(
                     self.qase_service, 
                     self.testrail_service, 
@@ -57,16 +65,6 @@ class TestRailImporter:
                     self.config
                 ).import_suites(project)
 
-                # Step 6. Import milestones
-                #self.logger.print_status('Importing milestones', 1, 1, 1)
-                self.mappings = Milestones(
-                    self.qase_service, 
-                    self.testrail_service, 
-                    self.logger, 
-                    self.mappings
-                ).import_milestones(project)
-
-                # Step 7. Import test cases
                 Cases(
                     self.qase_service, 
                     self.testrail_service, 
@@ -75,7 +73,6 @@ class TestRailImporter:
                     self.config
                 ).import_cases(project)
 
-                # Step 8. Import runs
                 Runs(
                     self.qase_service, 
                     self.testrail_service, 

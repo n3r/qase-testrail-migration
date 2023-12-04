@@ -8,7 +8,7 @@ try:
 except Exception as e:
     config.build_config()
 
-logger = Logger(config.get('debug'), config.get('logfile'))
+logger = Logger(config.get('debug'))
 
 # Init
 importer = TestRailImporter(config, logger)
