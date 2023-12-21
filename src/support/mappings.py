@@ -11,6 +11,7 @@ class Mappings:
         self.step_fields = []
 
         self.refs_id = None
+        self.group_id = None
 
         # A map of TestRail custom fields types to Qase custom fields types
         self.custom_fields_type = {

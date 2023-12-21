@@ -108,7 +108,7 @@ class Projects:
     # Method creates project in Qase
     def _create_project(self, title: str, description: Optional[str]) -> Union[str, None]:
         code = self._short_code(title)
-        result = self.qase.create_project(title, description, code)
+        result = self.qase.create_project(title, description, code, self.mappings.group_id)
         if result:
             return code
         return None

@@ -28,7 +28,7 @@ class QaseService:
         self.logger = logger
 
         configuration = Configuration()
-        configuration.api_key['TokenAuth'] = config.get('qase.token')
+        configuration.api_key['TokenAuth'] = config.get('qase.api_token')
         configuration.host = f'https://api.{config.get("qase.host")}/v1'
         configuration.ssl_ca_cert = certifi.where()
 
@@ -123,17 +123,22 @@ class QaseService:
             result[key] = value
         return result
     
-    def create_project(self, title, description, code):
+    def create_project(self, title, description, code, group_id = None):
         api_instance = ProjectsApi(self.client)
+
+        data = {
+            'title': title,
+            'code': code,
+            'description': description if description else "",
+        }
+
+        if group_id != None:
+            data['group'] = group_id
 
         self.logger.log(f'Creating project: {title} [{code}]')
         try:
             api_response = api_instance.create_project(
-                project_create = ProjectCreate(
-                    title = title,
-                    code = code,
-                    description = description if description else "",
-                )
+                project_create = ProjectCreate(**data)
             )
             self.logger.log(f'Project was created: {api_response.result.code}')
             return True

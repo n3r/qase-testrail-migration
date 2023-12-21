@@ -17,7 +17,8 @@ Create a new config file from the example or use template:
 ```json
 {
     "qase": {
-        "token": "<QASE_API_TOKEN>",
+        "api_token": "<QASE_API_TOKEN>",
+        "scim_token": "<QASE_SCIM_API_TOKEN>",
         "host": "<QASE_API_HOST|Default:qase.io>"
     },
     "testrail": {
@@ -33,6 +34,7 @@ Create a new config file from the example or use template:
         "completed": true
     },
     "tests": {
+        "preserve_ids": true,
         "fields": [],
         "types": {
             "1": "other",
@@ -59,7 +61,7 @@ Create a new config file from the example or use template:
         }
     },
     "runs": {
-        "createdafter": 1672524000,
+        "created_after": 1672524000,
         "statuses": {
             "1": "passed",
             "2": "blocked",
@@ -68,14 +70,19 @@ Create a new config file from the example or use template:
             "5": "failed"
         }
     },
-    "defaultuser": 1,
-    "threads": 3
+    "users": {
+        "default": 1,
+        "create": true,
+        "group_name": "Migration from TestRail"
+    }
 }
 ```
 
 Required fields to fill:
 
-- `qase.token` - API token from Qase
+- `qase.host` - Qase host
+- `qase.api` - API token from Qase
+- `qase.scim` - SCIM token from Qase
 - `testrail.connection` - Type of connection to TestRail. Can be `api` or `db`
 - `testrail.api.host` - URL of your TestRail instance
 - `testrail.api.user` - Email of user in TestRail. This user should have *administrator* access rights
@@ -84,7 +91,9 @@ Required fields to fill:
 - `tests.fields` - A list of custom fields from TestRail to import (use "label" as a field value). Keep empty to import all fields
 - `tests.types` - ids and values for "type" field from Qase. In the example you can find default values created for a new workspace in Qase. If you have changed the values, you can pass an updated map here. 
 - `tests.priorities` - ids and values for "priority" field from Qase. In the example you can find default values created for a new workspace in Qase. If you have changed the values, you can pass an updated map here.
-- `defaultuser` - ID of user in Qase. This user will be used as author of all test cases if migrator unable to match user from TestRail to Qase
+- `users.default` - ID of user in Qase. This user will be used as author of all test cases if migrator unable to match user from TestRail to Qase
+- `users.create` - If set to `true` migrator will create new users in Qase if it unable to match user from TestRail to Qase
+- `users.group_name` - Name of group in Qase where new users will be added
 - `threads` - Number of threads to use for migration. Default: 5
 
 ### 3. Run

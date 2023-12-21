@@ -1,6 +1,7 @@
 {
     "qase": {
-        "token": "<QASE_API_TOKEN>",
+        "api_token": "<QASE_API_TOKEN>",
+        "scim_token": "<QASE_SCIM_API_TOKEN>",
         "host": "<QASE_API_HOST|Default:qase.io>"
     },
     "testrail": {
@@ -16,6 +17,7 @@
         "completed": true
     },
     "tests": {
+        "preserve_ids": true,
         "fields": [],
         "types": {
             "1": "other",
@@ -51,6 +53,9 @@
             "5": "failed"
         }
     },
-    "default_user": 1,
-    "threads": 3
+    "users": {
+        "default": 1,
+        "create": true,
+        "group_name": "Migration from TestRail"
+    }
 }
