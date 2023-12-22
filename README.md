@@ -92,9 +92,9 @@ Required fields to fill:
 - `tests.types` - ids and values for "type" field from Qase. In the example you can find default values created for a new workspace in Qase. If you have changed the values, you can pass an updated map here. 
 - `tests.priorities` - ids and values for "priority" field from Qase. In the example you can find default values created for a new workspace in Qase. If you have changed the values, you can pass an updated map here.
 - `users.default` - ID of user in Qase. This user will be used as author of all test cases if migrator unable to match user from TestRail to Qase
-- `users.create` - If set to `true` migrator will create new users in Qase if it unable to match user from TestRail to Qase
-- `users.group_name` - Name of group in Qase where new users will be added
-- `threads` - Number of threads to use for migration. Default: 5
+- `users.create` - If set to `true` migrator will create new users in Qase if it unable to match user from TestRail to Qase. *SCIM API token is required for this option.*
+- `users.group_name` - Name of group in Qase where new users will be added. *SCIM API token is required for this option.*
+- `users.inactive` - If set to `true` migrator will migrate all users from TestRail to Qase. *SCIM API token is required for this option.*
 
 ### 3. Run
 
