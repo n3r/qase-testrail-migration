@@ -52,7 +52,7 @@ class TestrailApiRepository:
         return self.client.get('get_results_for_run/' + str(run_id) + f'&limit={limit}&offset={offset}')
     
     def get_attachment(self, attachment):
-        return self.client.get('get_attachment/' + str(attachment))
+        return self.client.get_attachment(attachment)
     
     def get_test(self, test_id: int):
         return self.client.get('get_test/' + str(test_id))

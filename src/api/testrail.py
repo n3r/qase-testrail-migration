@@ -4,11 +4,10 @@ import requests
 
 class TestrailApiClient:
     def __init__(self, base_url, user, token, max_retries=3, backoff_factor=1):
-        base_url = base_url
         if not base_url.endswith('/'):
             base_url += '/'
-        self.base_url = base_url
         self.__url = base_url + 'index.php?/api/v2/'
+        self._attachment_url = base_url + 'index.php?/attachments/get/'
 
         auth = str(
             base64.b64encode(
@@ -24,6 +23,12 @@ class TestrailApiClient:
         self.max_retries = max_retries
         self.backoff_factor = backoff_factor
 
+        # Create a session object
+        self.session = requests.Session()
+        login_response = self.session.post(base_url + 'index.php?/auth/login/', data={'name': user, 'password': token})
+        if login_response.status_code != 200:
+            self.session = None
+
     def get(self, uri):
         return self.send_request(requests.get, uri)
 
@@ -33,8 +38,8 @@ class TestrailApiClient:
             response = request_method(url, headers=self.headers, data=payload)
             if response.status_code != 429 and response.status_code <= 201:
                 return self.process_response(response, uri)
-            if response.status_code == 403 and uri[:15] == 'get_attachment/':
-                raise APIError('Attachment not found.')
+            if response.status_code == 403:
+                raise APIError('Access denied.')
             if response.status_code == 400:
                 raise APIError('Invalid data or entity not found.')
             elif attempt == self.max_retries:
@@ -43,13 +48,16 @@ class TestrailApiClient:
                 time.sleep(self.backoff_factor * (2 ** attempt))
 
     def process_response(self, response, uri):
-        if uri[:15] == 'get_attachment/':
-            return response
+        try:
+            return response.json()
+        except:
+            raise APIError('Failed to parse JSON response')
+            
+    def get_attachment(self, id):
+        if not self.session:
+            return self.send_request(requests.get, f'get_attachment/{id}')
         else:
-            try:
-                return response.json()
-            except:
-                raise APIError('Failed to parse JSON response')
+            return self.session.get(self._attachment_url + id)
 
 class APIError(Exception):
     pass
