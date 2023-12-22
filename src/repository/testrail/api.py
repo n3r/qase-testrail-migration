@@ -7,6 +7,9 @@ class TestrailApiRepository:
     def get_all_users(self):
         return self.client.get('get_users')
     
+    def get_users(self, limit = 250, offset = 0):
+        return self.client.get('get_users/' + f'&limit={limit}&offset={offset}')
+    
     def get_case_types(self):
         return self.client.get('get_case_types')
     

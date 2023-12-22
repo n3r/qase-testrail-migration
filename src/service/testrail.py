@@ -33,6 +33,9 @@ class TestrailService:
     def get_all_users(self):
         return self.repository.get_all_users()
     
+    def get_users(self, limit: int = 250, offset: int = 0):
+        return self.repository.get_users(limit, offset)
+    
     def get_case_types(self):
         return self.repository.get_case_types()
     

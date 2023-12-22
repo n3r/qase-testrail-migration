@@ -59,7 +59,7 @@ class Suites:
 
         i = 1
         for section in sections:
-            self.logger.log(f"[{qase_code}]Creating suite in Qase: {section['name']} ({section['id']})")
+            self.logger.log(f"[{qase_code}] Creating suite in Qase: {section['name']} ({section['id']})")
             self.logger.print_status('['+qase_code+'] Importing sections', i, len(sections), 1)
 
             if (section['parent_id'] == None and parent_id != None):

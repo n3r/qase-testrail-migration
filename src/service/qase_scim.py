@@ -15,7 +15,7 @@ class QaseScimService:
 
         self.client = QaseScimClient(self.config.get('qase.host'), self.config.get('qase.scim_token'))
 
-    def create_user(self, email, first_name, last_name, roleTitle):
+    def create_user(self, email, first_name, last_name, roleTitle, is_active=True):
         try:
             payload = {
                 'schemas': ['urn:ietf:params:scim:schemas:core:2.0:User'],
@@ -24,7 +24,7 @@ class QaseScimService:
                     'familyName': last_name,
                     'givenName': first_name
                 },
-                'active': True,
+                'active': is_active,
                 'roleTitle': roleTitle
             }
             response = self.client.create_user(payload)

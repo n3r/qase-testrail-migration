@@ -2,8 +2,6 @@ from ..service import QaseService, TestrailService
 from ..support import Logger, Mappings, ConfigManager as Config
 
 from qaseio.models import BulkRequestCasesInner, TestStepCreate
-from concurrent.futures import ThreadPoolExecutor
-
 from .attachments import Attachments
 
 from typing import List, Optional, Union
@@ -19,44 +17,42 @@ class Cases:
         self.logger = logger
         self.mappings = mappings
         self.attachments = Attachments(self.qase, self.testrail, self.logger)
+        self.total = 0
 
     def import_cases(self, project: dict):
         self.project = project
-        limit = 250
-        threads = self.config.get('threads') if self.config.get('threads') else 3
-        # Todo: add counter
-        self.logger.print_status('['+self.project['code']+'] Importing test cases', 1, 1, 1)
-
-        def process_cases(suite_id, offset, limit):
-            try:
-                if suite_id == None:
-                    suite_id = 0
-                cases = self.testrail.get_cases(self.project['testrail_id'], suite_id, limit, offset)
-                if cases:
-                    self.logger.log(f'Importing cases from {offset} to {offset + limit} for suite {suite_id}')
-                    self.qase.create_cases(self.project['code'], self._prepare_cases(cases))
-                return len(cases)
-            except Exception as e:
-                self.logger.log(f"Error processing cases for suite {suite_id}: {e}")
-                return 0
-
-        def import_cases_for_suite(suite_id):
-            offset = 0
-            with ThreadPoolExecutor(max_workers=threads) as executor:
-                while True:
-                    self.logger.log(f'Thread {threads} is processing cases from {offset} to {offset + limit} for suite {suite_id}')
-                    future = executor.submit(process_cases, suite_id, offset, limit)
-                    case_count = future.result()
-                    offset += limit
-                    if case_count < limit:
-                        break
 
         if self.project['suite_mode'] == 3:
             suites = self.testrail.get_suites(self.project['testrail_id'])
             for suite in suites:
-                import_cases_for_suite(suite['id'])
+                self.import_cases_for_suite(suite['id'])
         else:
-            import_cases_for_suite(None)  # Assuming None is a valid suite_id when suite_mode is not 3
+            self.import_cases_for_suite(None)  # Assuming None is a valid suite_id when suite_mode is not 3
+
+    def import_cases_for_suite(self, suite_id):
+        offset = 0
+        limit = 250
+        while True:
+            count = self.process_cases(suite_id, offset, limit)
+            if count < limit:
+                break
+            offset += limit
+
+    def process_cases(self, suite_id: int, offset: int, limit: int):
+        try:
+            if suite_id == None:
+                suite_id = 0
+            cases = self.testrail.get_cases(self.project['testrail_id'], suite_id, limit, offset)
+            if cases:
+                self.logger.print_status('['+self.project['code']+'] Importing test cases', self.total, self.total+cases['size'], 1)
+                self.logger.log(f'Importing cases from {offset} to {offset + limit} for suite {suite_id}')
+                self.qase.create_cases(self.project['code'], self._prepare_cases(cases))
+                self.total = self.total + cases['size']
+                self.logger.print_status('['+self.project['code']+'] Importing test cases', self.total, self.total, 1)
+            return cases['size']
+        except Exception as e:
+            self.logger.log(f"Error processing cases for suite {suite_id}: {e}")
+            return 0
     
     def _prepare_cases(self, cases: List) -> List:
         result = []
