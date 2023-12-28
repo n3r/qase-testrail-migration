@@ -219,12 +219,13 @@ class QaseService:
                     else:
                         start_time = tr_run['created_on'] - elapsed
 
-                    data = {
-                        "case_id": cases_map[result['test_id']],
-                        "status": status_map.get(str(result["status_id"]), "skipped"),
-                        "time_ms": elapsed*1000, # converting to miliseconds
-                        "comment": str(result['comment'])
-                    }
+                    if result['test_id'] in cases_map:
+                        data = {
+                            "case_id": cases_map[result['test_id']],
+                            "status": status_map.get(str(result["status_id"]), "skipped"),
+                            "time_ms": elapsed*1000, # converting to miliseconds
+                            "comment": str(result['comment'])
+                        }
 
                     if (start_time):
                         data['start_time'] = start_time
