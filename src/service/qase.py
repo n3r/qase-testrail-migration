@@ -7,6 +7,7 @@ from qaseio.api_client import ApiClient
 from qaseio.configuration import Configuration
 from qaseio.api.authors_api import AuthorsApi
 from qaseio.api.custom_fields_api import CustomFieldsApi
+from qaseio.api.system_fields_api import SystemFieldsApi
 from qaseio.api.projects_api import ProjectsApi
 from qaseio.api.suites_api import SuitesApi
 from qaseio.api.cases_api import CasesApi
@@ -15,7 +16,7 @@ from qaseio.api.results_api import ResultsApi
 from qaseio.api.attachments_api import AttachmentsApi
 from qaseio.api.milestones_api import MilestonesApi
 
-from qaseio.models import SuiteCreate, MilestoneCreate, CustomFieldCreate, CustomFieldCreateValueInner, ProjectCreate, BulkRequest, RunCreate, ResultCreateBulk
+from qaseio.models import TestCasebulk, SuiteCreate, MilestoneCreate, CustomFieldCreate, CustomFieldCreateValueInner, ProjectCreate, RunCreate, ResultcreateBulk
 
 from datetime import datetime
 
@@ -80,6 +81,17 @@ class QaseService:
         except ApiException as e:
             self.logger.log('Exception when calling CustomFieldsApi->create_custom_field: %s\n' % e)
         return 0
+    
+    def get_system_fields(self):
+        try:
+            api_instance = SystemFieldsApi(self.client)
+            # Get all system fields.
+            api_response = api_instance.get_system_fields()
+            if (api_response.status and api_response.result):
+                return api_response.result
+        except ApiException as e:
+            self.logger.log("Exception when calling SystemFieldsApi->get_system_fields: %s\n" % e)
+
     
     def prepare_custom_field_data(self, field, mappings) -> dict:
         data = {
@@ -171,7 +183,7 @@ class QaseService:
 
         try:
             # Create a new test cases.
-            api_response = api_instance.bulk(code, BulkRequest(cases))
+            api_response = api_instance.bulk(code, TestCasebulk(cases=cases))
             return api_response.status
         except ApiException as e:
             self.logger.log("Exception when calling CasesApi->bulk: %s\n" % e)
@@ -201,7 +213,7 @@ class QaseService:
         except Exception as e:
             self.logger.log(f'Exception when calling RunsApi->create_run: {e}')
 
-    def send_bulk_results(self, tr_run, results, qase_run_id, qase_code, status_map, mappings, cases_map):
+    def send_bulk_results(self, tr_run, results, qase_run_id, qase_code, mappings, cases_map):
         res = []
 
         if (results):
@@ -214,15 +226,18 @@ class QaseService:
                         else:
                             elapsed = int(result['elapsed'])
                             
-                    if 'tested_on' in result and result['tested_on']:
-                        start_time = result['tested_on'] - elapsed
+                    if 'created_on' in result and result['created_on']:
+                        start_time = result['created_on'] - elapsed
                     else:
                         start_time = tr_run['created_on'] - elapsed
 
                     if result['test_id'] in cases_map:
+                        status = 'skipped'
+                        if (mappings.statuses[result["status_id"]]):
+                            status = mappings.statuses[result["status_id"]]
                         data = {
                             "case_id": cases_map[result['test_id']],
-                            "status": status_map.get(str(result["status_id"]), "skipped"),
+                            "status": status,
                             "time_ms": elapsed*1000, # converting to miliseconds
                             "comment": str(result['comment'])
                         }
@@ -244,7 +259,7 @@ class QaseService:
                 api_results.create_result_bulk(
                         code=qase_code,
                         id=int(qase_run_id),
-                        result_create_bulk=ResultCreateBulk(
+                        resultcreate_bulk=ResultcreateBulk(
                             results=res
                         )
                     )
@@ -269,9 +284,10 @@ class QaseService:
         try:
             response = api_attachments.upload_attachment(
                     code, file=[attachment_data],
-                ).result
-            if response:
-                return response[0]
+                )
+            
+            if response.status:
+                return response.result[0].to_dict()
         except Exception as e:
             self.logger.log(f'Exception when calling AttachmentsApi->upload_attachment: {e}')
 

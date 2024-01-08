@@ -19,18 +19,22 @@ class Fields:
         self.config = config
 
         self.refs_id = None
+        self.system_fields = []
 
         self.map = {}
 
     def import_fields(self):
         self.logger.log('Importing system fields from TestRail')
-        
-        self._create_types_map()
-
-        self._create_priorities_map()
 
         qase_custom_fields = self.qase.get_case_custom_fields()
         testrail_custom_fields = self.testrail.get_case_fields()
+        qase_system_fields = self.qase.get_system_fields()
+        for field in qase_system_fields:
+            self.system_fields.append(field.to_dict())
+
+        self._create_types_map()
+        self._create_priorities_map()
+        self._create_statuses_map()
 
         total = len(testrail_custom_fields)
         
@@ -111,13 +115,18 @@ class Fields:
         self.logger.log('Creating types map')
 
         tr_types = self.testrail.get_case_types()
-        qase_types = self.config.get('tests.types')
+        qase_types = []
+
+        for field in self.system_fields:
+            if field['slug'] == 'type':
+                for option in field['options']:
+                    qase_types.append(option)
 
         for tr_type in tr_types:
             self.mappings.types[tr_type['id']] = 1
-            for qase_type_id in qase_types:
-                if tr_type['name'].lower() == qase_types[qase_type_id].lower():
-                    self.mappings.types[tr_type['id']] = int(qase_type_id)
+            for qase_type in qase_types:
+                if tr_type['name'].lower() == qase_type['slug'].lower():
+                    self.mappings.types[tr_type['id']] = int(qase_type['id'])
         
         self.logger.log('Types map was created')
 
@@ -125,11 +134,36 @@ class Fields:
         self.logger.log('Creating priorities map')
 
         tr_priorities = self.testrail.get_priorities()
-        qase_priorities = self.config.get('tests.priorities')
+        qase_priorities = []
+
+        for field in self.system_fields:
+            if field['slug'] == 'priority':
+                for option in field['options']:
+                    qase_priorities.append(option)
+
         for tr_priority in tr_priorities:
             self.mappings.priorities[tr_priority['id']] = 1
-            for qase_priority_id in qase_priorities:
-                if tr_priority['name'].lower() == qase_priorities[qase_priority_id].lower():
-                    self.mappings.priorities[tr_priority['id']] = int(qase_priority_id)
-        
+            for qase_priority in qase_priorities:
+                if tr_priority['name'].lower() == qase_priority['slug'].lower():
+                    self.mappings.priorities[tr_priority['id']] = int(qase_priority['id'])
+
         self.logger.log('Priorities map was created')
+
+    def _create_statuses_map(self):
+        self.logger.log('Creating statuses map')
+
+        tr_statuses = self.testrail.get_statuses()
+        qase_statuses = []
+
+        for field in self.system_fields:
+            if field['slug'] == 'result_status':
+                for option in field['options']:
+                    qase_statuses.append(option)
+
+        for tr_status in tr_statuses:
+            self.mappings.statuses[tr_status['id']] = 1
+            for qase_status in qase_statuses:
+                if tr_status['name'].lower() == qase_status['slug'].lower():
+                    self.mappings.statuses[tr_status['id']] = qase_status['slug']
+
+        self.logger.log('Statuses map was created')

@@ -31,7 +31,7 @@ class Users:
 
         self.get_testrail_users()
 
-        if (self.scim and self.config.get('users.create')):
+        if (self.scim != None and self.config.get('users.create')):
             self.create_group()
             self.create_users()
             # Refreshing users, because there is a difference between Member ID and Author ID
@@ -49,6 +49,7 @@ class Users:
             i += 1
             flag = False
             for qase_user in self.qase_users:
+                qase_user = qase_user.to_dict()
                 if (testrail_user['email'] == qase_user['email'] and testrail_user['is_active'] == True):
                     self.mappings.users[testrail_user['id']] = qase_user['id']
                     flag = True
@@ -70,32 +71,31 @@ class Users:
 
     def create_users(self):
         for testrail_user in self.testrail_users:
-            i += 1
             flag = False
             for qase_user in self.qase_users:
+                qase_user = qase_user.to_dict()
                 if (testrail_user['email'] == qase_user['email']):
                     # We have found a user. No need to create it.
                     flag = True
                     break
             if (flag == False):
                 # Not found, using default user
-                if (self.config.get('users.create')):
-                    if (testrail_user['is_active'] == False and self.config.get('users.create_inactive') == False):
-                        # Skipping user
-                        continue
+                if (testrail_user['is_active'] == False and not self.config.get('users.inactive')):
+                    # Skipping user
+                    continue
+                try:
+                    user_id = self.create_user(testrail_user)
                     try:
-                        user_id = self.create_user(testrail_user)
-                        try:
-                            self.logger.log(f"Adding user {testrail_user['email']} to group")
-                            self.scim.add_user_to_group(self.mappings.group_id, user_id)
-                        except Exception as e:
-                            self.logger.log(f"Failed to add user {testrail_user['email']} to group")
-                            self.logger.log(e)
-                            continue
+                        self.logger.log(f"Adding user {testrail_user['email']} to group")
+                        self.scim.add_user_to_group(self.mappings.group_id, user_id)
                     except Exception as e:
-                        self.logger.log(f"Failed to create user {testrail_user['email']}")
+                        self.logger.log(f"Failed to add user {testrail_user['email']} to group")
                         self.logger.log(e)
                         continue
+                except Exception as e:
+                    self.logger.log(f"Failed to create user {testrail_user['email']}")
+                    self.logger.log(e)
+                    continue    
 
     def get_testrail_users(self):
         limit = 250

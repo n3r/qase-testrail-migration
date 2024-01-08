@@ -23,10 +23,11 @@ class Runs:
         self.logger.log(f'[{self.project["code"]}] Importing runs from TestRail project {self.project["name"]}')
         self._build_index()
         self.logger.log(f'[{self.project["code"]}] Found {str(len(self.index))} runs')
-        self.logger.log(f'[{self.project["code"]}] Sorting runs by creation date')
         self.index.sort(key=lambda x: x['created_on'])
-        self.logger.log(f'[{self.project["code"]}] Importing runs')
+        i = 0
         for run in self.index:
+            i += 1
+            self.logger.print_status(f'[{self.project["code"]}] Importing runs', i, len(self.index), 1)
             self._import_run(run)
 
     def _build_index(self) -> None:
@@ -114,27 +115,29 @@ class Runs:
     def _import_results_for_run(self, run: list, qase_run_id: str, cases_map: dict) -> None:
         limit = 250
         offset = 0
+        run_results = []
 
-        process = True
-
-        while process == True:
-            process = self._import_results(run, qase_run_id, cases_map, limit, offset)
+        while True:
+            results = self.testrail.get_results(run['id'], limit, offset)
+            run_results = run_results + results['results']
             offset = offset + limit
+            if results['size'] < limit:
+                break
 
-    def _import_results(self, tr_run, qase_run_id, cases_map, limit, offset) -> None:
-        results = self.testrail.get_results(tr_run['id'], limit, offset)
+        self.logger.log(f'Found {str(len(run_results))} results for the run {run["name"]} [{run["id"]}]')
+        
+        # TODO: Split into 1000 chunks if more that 1000
+        self._import_results(run, qase_run_id, cases_map, run_results)
+
+    def _import_results(self, tr_run, qase_run_id, cases_map, results) -> None:
         self.qase.send_bulk_results(
             tr_run,
-            results['results'],
+            sorted(results, key=lambda x: x['created_on']),
             qase_run_id,
             self.project['code'],
-            self.config.get('runs.statuses'),
             self.mappings,
             cases_map
         )
-        if results['size'] < limit:
-            return False
-        return True
 
     def __get_cases_for_run(self, run: list) -> dict:
         cases_map = {}

@@ -35,6 +35,8 @@ class QaseScimClient:
 
             if response.status_code != 429 and response.status_code <= 201:
                 return self.process_response(response, uri)
+            elif response.status_code == 500:
+                break
             elif attempt == self.max_retries:
                 break
             else:

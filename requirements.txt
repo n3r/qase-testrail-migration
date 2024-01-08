@@ -1,4 +1,5 @@
-qaseio>=3.3.0
+qaseio>=4.0.0
 certifi
 requests
+urllib3
 mysql-connector-python

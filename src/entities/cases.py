@@ -1,7 +1,7 @@
 from ..service import QaseService, TestrailService
 from ..support import Logger, Mappings, ConfigManager as Config
 
-from qaseio.models import BulkRequestCasesInner, TestStepCreate
+from qaseio.models import TestStepCreate, TestCasebulkCasesInner
 from .attachments import Attachments
 
 from typing import List, Optional, Union
@@ -77,7 +77,7 @@ class Cases:
             data = self._set_refs(case=case, data=data)
 
             result.append(
-                BulkRequestCasesInner(
+                TestCasebulkCasesInner(
                     **data
                 )
             )

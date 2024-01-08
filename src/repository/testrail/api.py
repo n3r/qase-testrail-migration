@@ -13,6 +13,9 @@ class TestrailApiRepository:
     def get_case_types(self):
         return self.client.get('get_case_types')
     
+    def get_statuses(self):
+        return self.client.get('get_statuses')
+    
     def get_priorities(self):
         return self.client.get('get_priorities')
     

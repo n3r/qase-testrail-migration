@@ -5,6 +5,8 @@ from typing import List
 
 from io import BytesIO
 
+import tempfile
+
 from urllib.parse import unquote
 
 import re
@@ -51,7 +53,13 @@ class Attachments:
         if match:
             content.name = unquote(match.group(1))
 
-        return content
+        # Hack for new api version
+        with tempfile.NamedTemporaryFile(delete=False, suffix=f'_{content.name}', mode='wb') as tmp_file:
+            tmp_file.write(content.read())
+            tmp_file_path = tmp_file.name
+
+        return tmp_file_path
+
 
     def replace_attachments(self, string: str) -> str:
         try:

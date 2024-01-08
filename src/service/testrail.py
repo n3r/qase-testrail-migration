@@ -39,6 +39,9 @@ class TestrailService:
     def get_case_types(self):
         return self.repository.get_case_types()
     
+    def get_statuses(self):
+        return self.repository.get_statuses()
+    
     def get_priorities(self):
         return self.repository.get_priorities()
     
