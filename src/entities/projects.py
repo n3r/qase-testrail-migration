@@ -33,6 +33,7 @@ class Projects:
                     }
                     data['code'] = self._create_project(project['name'], project['announcement'])
                     self.mappings.projects.append(data)
+                    self.mappings.project_map[project['id']] = data['code']
                 else:
                     self.logger.log(f'Skipping project: {project["name"]}')
                 i += 1

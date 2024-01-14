@@ -84,7 +84,7 @@ class Fields:
                     return
 
         data = self.qase.prepare_custom_field_data(field, self.mappings)
-        qase_id = self.qase.create_custom_field(data, field)
+        qase_id = self.qase.create_custom_field(data)
         if qase_id > 0:
             field['qase_id'] = qase_id
             self.mappings.custom_fields[field['name']] = field
@@ -109,7 +109,7 @@ class Fields:
                     'is_required': False,
                     'is_enabled_for_all_projects': True,
                 }
-                self.mappings.refs_id = self.qase.create_custom_field(data, {})
+                self.mappings.refs_id = self.qase.create_custom_field(data)
 
     def _create_types_map(self):
         self.logger.log('Creating types map')

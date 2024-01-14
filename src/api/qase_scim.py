@@ -50,6 +50,9 @@ class QaseScimClient:
     def create_group(self, payload):
         return self.post('Groups', payload)
     
+    def get_users(self, limit = 100, offset = 0):
+        return self.get(f'Users?count={limit}&startIndex={offset}')
+    
     def add_user_to_group(self, group_id, user_id):
         payload = {
             'schemas': ['urn:ietf:params:scim:api:messages:2.0:PatchOp'],

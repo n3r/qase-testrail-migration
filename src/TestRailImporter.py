@@ -29,8 +29,17 @@ class TestRailImporter:
                 self.config,
                 self.qase_scim_service,
             ).import_users()
+
+            # Step 2. Import project and build projects map
+            self.mappings = Projects(
+                self.qase_service, 
+                self.testrail_service, 
+                self.logger, 
+                self.mappings,
+                self.config
+            ).import_projects()
             
-            # Step 2. Import custom fields
+            # Step 3. Import custom fields
             self.mappings = Fields(
                 self.qase_service, 
                 self.testrail_service, 
@@ -39,17 +48,7 @@ class TestRailImporter:
                 self.config,
             ).import_fields()
 
-            # Step 3. Import project and build projects map
-            self.mappings = Projects(
-                self.qase_service, 
-                self.testrail_service, 
-                self.logger, 
-                self.mappings,
-                self.config
-            ).import_projects()
-
-            # Step 4. Import projects
-            
+            # Step 4. Import projects data
             for project in self.mappings.projects:
                 self.logger.print_group(f'Importing project: {project["name"]}' 
                                         + (' (' 

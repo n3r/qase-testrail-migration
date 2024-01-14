@@ -68,15 +68,15 @@ class QaseService:
         except ApiException as e:
             self.logger.log("Exception when calling CustomFieldsApi->get_custom_fields: %s\n" % e)
 
-    def create_custom_field(self, data, field) -> int:
+    def create_custom_field(self, data) -> int:
         try:
             api_instance = CustomFieldsApi(self.client)
             # Create a custom field.
             api_response = api_instance.create_custom_field(custom_field_create=CustomFieldCreate(**data))
             if (api_response.status == False):
-                self.logger.log('Error creating custom field: ' + field['name'])
+                self.logger.log('Error creating custom field: ' + data['title'])
             else:
-                self.logger.log('Custom field created: ' + field['name'])
+                self.logger.log('Custom field created: ' + data['title'])
                 return api_response.result.id
         except ApiException as e:
             self.logger.log('Exception when calling CustomFieldsApi->create_custom_field: %s\n' % e)
@@ -102,8 +102,19 @@ class QaseService:
             'is_filterable': True,
             'is_visible': True,
             'is_required': False,
-            'is_enabled_for_all_projects': True,
         }
+        if (field['configs'][0]['context']['is_global'] == True):
+            data['is_enabled_for_all_projects'] = True
+        else:
+            data['is_enabled_for_all_projects'] = False
+            print(field['configs'][0]['context']['project_ids'])
+            print(mappings.project_map)
+            if (field['configs'][0]['context']['project_ids']):
+                data['projects_codes'] = []
+                for id in field['configs'][0]['context']['project_ids']:
+                    if id in mappings.project_map:
+                        data['projects_codes'].append(mappings.project_map[id])
+
         if (self.__get_default_value(field)):
             data['default_value'] = self.__get_default_value(field)
         if (field['type_id'] == 12 or field['type_id'] == 6):
@@ -219,6 +230,7 @@ class QaseService:
         if (results):
             for result in results:
                 if result['status_id'] != 3:
+
                     elapsed = 0
                     if ('elapsed' in result and result['elapsed']):
                         if type(result['elapsed']) == str:
@@ -233,7 +245,7 @@ class QaseService:
 
                     if result['test_id'] in cases_map:
                         status = 'skipped'
-                        if (mappings.statuses[result["status_id"]]):
+                        if ("status_id" in result and result["status_id"] != None and mappings.statuses[result["status_id"]]):
                             status = mappings.statuses[result["status_id"]]
                         data = {
                             "case_id": cases_map[result['test_id']],
@@ -241,6 +253,9 @@ class QaseService:
                             "time_ms": elapsed*1000, # converting to miliseconds
                             "comment": str(result['comment'])
                         }
+
+                    if ('attachments' in result and len(result['attachments']) > 0):
+                        data['attachments'] = result['attachments']
 
                     if (start_time):
                         data['start_time'] = start_time

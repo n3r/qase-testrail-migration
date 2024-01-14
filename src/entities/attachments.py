@@ -27,6 +27,13 @@ class Attachments:
                 return self.replace_attachments(string=string)
         return string
     
+    def check_and_replace_attachments_array(self, attachments: list, code: str) -> list:
+        result = []
+        self.import_attachments(code, attachments)
+        for attachment in attachments:
+            result.append(self.map[attachment]['hash'])
+        return result
+    
     def check_attachments(self, string: str) -> List:
         if (string):
             return re.findall(r'index\.php\?/attachments/get/([a-f0-9-]+)', str(string))

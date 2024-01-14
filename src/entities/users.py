@@ -24,7 +24,6 @@ class Users:
         # Function builds a map of TestRail users to Qase users and stores it in self.users_map
         self.logger.log("Building users map")
         self.logger.log("Getting users from Qase")
-        self.qase_users = self.qase.get_all_users()
 
         self.logger.log("Getting users from TestRail")
         self.testrail_users = []
@@ -34,23 +33,22 @@ class Users:
         if (self.scim != None and self.config.get('users.create')):
             self.create_group()
             self.create_users()
-            # Refreshing users, because there is a difference between Member ID and Author ID
-            self.qase_users = self.qase.get_all_users()
 
         self.build_map()
 
         return self.mappings
     
     def build_map(self):
+        qase_users = self.qase.get_all_users()
         i = 0
         total = len(self.testrail_users)
         self.logger.print_status('Building users map', i, total)
         for testrail_user in self.testrail_users:
             i += 1
             flag = False
-            for qase_user in self.qase_users:
+            for qase_user in qase_users:
                 qase_user = qase_user.to_dict()
-                if (testrail_user['email'] == qase_user['email'] and testrail_user['is_active'] == True):
+                if (testrail_user['email'] == qase_user['email']):
                     self.mappings.users[testrail_user['id']] = qase_user['id']
                     flag = True
                     self.logger.log(f"User {testrail_user['email']} found in Qase as {qase_user['email']}")
@@ -70,14 +68,15 @@ class Users:
         self.mappings.group_id = self.scim.create_group(group_name)
 
     def create_users(self):
+        qase_users = self.scim.get_all_users()
+        ids = []
         for testrail_user in self.testrail_users:
             flag = False
-            for qase_user in self.qase_users:
-                qase_user = qase_user.to_dict()
-                if (testrail_user['email'] == qase_user['email']):
+            for qase_user in qase_users:
+                if (testrail_user['email'] == qase_user['userName']):
                     # We have found a user. No need to create it.
+                    ids.append(qase_user['id'])
                     flag = True
-                    break
             if (flag == False):
                 # Not found, using default user
                 if (testrail_user['is_active'] == False and not self.config.get('users.inactive')):
@@ -87,7 +86,7 @@ class Users:
                     user_id = self.create_user(testrail_user)
                     try:
                         self.logger.log(f"Adding user {testrail_user['email']} to group")
-                        self.scim.add_user_to_group(self.mappings.group_id, user_id)
+                        ids.append(user_id)
                     except Exception as e:
                         self.logger.log(f"Failed to add user {testrail_user['email']} to group")
                         self.logger.log(e)
@@ -96,6 +95,11 @@ class Users:
                     self.logger.log(f"Failed to create user {testrail_user['email']}")
                     self.logger.log(e)
                     continue    
+
+        if (len(ids) > 0):
+            self.logger.log(f"Adding {len(ids)} users to group")
+            for id in ids:
+                self.scim.add_user_to_group(self.mappings.group_id, id)
 
     def get_testrail_users(self):
         limit = 250

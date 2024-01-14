@@ -8,6 +8,9 @@ class Mappings:
         self.custom_fields = {}
         self.milestones = {}
         self.projects = []
+
+        # A map of TestRail project ids to Qase project codes
+        self.project_map = {}
         # Step fields. Used to determine if a field is a step field or not during import
         self.step_fields = []
 

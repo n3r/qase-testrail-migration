@@ -1,5 +1,8 @@
 from ..service import QaseService, TestrailService
 from ..support import Logger, Mappings, ConfigManager as Config
+from .attachments import Attachments
+
+from datetime import datetime
 
 class Runs:
     def __init__(self, 
@@ -15,6 +18,8 @@ class Runs:
         self.logger = logger
         self.mappings = mappings
         self.project = project
+
+        self.attachments = Attachments(self.qase, self.testrail, self.logger)
 
         self.created_after = self.config.get('runs.created_after')
         self.index = []
@@ -119,15 +124,61 @@ class Runs:
 
         while True:
             results = self.testrail.get_results(run['id'], limit, offset)
-            run_results = run_results + results['results']
+            run_results = run_results + self._clean_results(results['results'])
             offset = offset + limit
             if results['size'] < limit:
                 break
 
         self.logger.log(f'Found {str(len(run_results))} results for the run {run["name"]} [{run["id"]}]')
+
+        run_results = self._merge_comments(run_results)
         
         # TODO: Split into 1000 chunks if more that 1000
         self._import_results(run, qase_run_id, cases_map, run_results)
+
+    def _clean_results(self, results: list) -> list:
+        clean_results = []
+        for result in results:
+            if (result['status_id'] != 3):
+                if (len(result['attachment_ids']) > 0):
+                    result['attachments'] = self.attachments.check_and_replace_attachments_array(result['attachment_ids'], self.project['code'])
+                del result['attachment_ids']
+                del result['version']
+                clean_results.append(result)
+
+        return clean_results
+    
+    def _merge_comments(self, results: list) -> list:
+        comments = {}
+        cleaned = []
+        for result in results:
+            if (result['status_id'] == None):
+                if result['test_id'] not in comments:
+                    comments[result['test_id']] = []
+                comments[result['test_id']].append(result)
+            else: 
+                cleaned.append(result)
+
+        for result in cleaned:
+            if result['test_id'] in comments and len(comments[result['test_id']]) > 0:
+                for comment in comments[result['test_id']]:
+                    comment_date = datetime.fromtimestamp(result['created_on'])
+                    additional_comment = f"\n On {comment_date} a comment was added: \n {str(comment['comment'])}"
+                    if (result['comment'] == None):
+                        result['comment'] = additional_comment
+                    else:
+                        result['comment'] = str(result['comment']) + additional_comment
+                    if 'attachments' in comment:
+                        if ('attachments' not in result):
+                            result['attachments'] = comment['attachments']
+                        else:
+                            result['attachments'] += comment['attachments']
+                del comments[result['test_id']]
+            else:
+                result['comments'] = []
+
+        return cleaned
+
 
     def _import_results(self, tr_run, qase_run_id, cases_map, results) -> None:
         self.qase.send_bulk_results(
@@ -138,6 +189,33 @@ class Runs:
             self.mappings,
             cases_map
         )
+    
+    def _merge_comments_with_same_test_id(self, test_results):
+        # Initialize a new list to hold the processed results
+        processed_results = []
+        # Create a dictionary to map test_id to its corresponding index in the processed_results
+        test_id_to_index = {}
+
+        for result in test_results:
+            # Check if the result is a comment
+            if result['status_id'] is None:
+                test_id = result['test_id']
+                # If the comment is for a test_id that exists in processed_results
+                if test_id in test_id_to_index:
+                    index = test_id_to_index[test_id]
+                    # Merge the comment and attachments with the previous result
+                    comment_date = datetime.utcfromtimestamp(result['created_on']).strftime('%A, %d %B %Y %H:%M:%S')
+                    additional_comment = f"\n On {comment_date} a comment was added: \n {result['comment']}"
+                    processed_results[index]['comment'] += additional_comment
+                    if 'attachments' in result:
+                        processed_results[index].setdefault('attachments', []).extend(result['attachments'])
+                # If the comment is not for a test_id that exists in processed_results, ignore it
+            else:
+                # Add the non-comment result to the processed_results
+                processed_results.append(result)
+                test_id_to_index[result['test_id']] = len(processed_results) - 1
+
+        return processed_results
 
     def __get_cases_for_run(self, run: list) -> dict:
         cases_map = {}
