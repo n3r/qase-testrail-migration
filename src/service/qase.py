@@ -59,6 +59,7 @@ class QaseService:
         return users
     
     def get_case_custom_fields(self):
+        self.logger.log('Getting custom fields from Qase')
         try:
             api_instance = CustomFieldsApi(self.client)
             # Get all custom fields.
@@ -107,8 +108,6 @@ class QaseService:
             data['is_enabled_for_all_projects'] = True
         else:
             data['is_enabled_for_all_projects'] = False
-            print(field['configs'][0]['context']['project_ids'])
-            print(mappings.project_map)
             if (field['configs'][0]['context']['project_ids']):
                 data['projects_codes'] = []
                 for id in field['configs'][0]['context']['project_ids']:
@@ -245,8 +244,8 @@ class QaseService:
 
                     if result['test_id'] in cases_map:
                         status = 'skipped'
-                        if ("status_id" in result and result["status_id"] != None and mappings.statuses[result["status_id"]]):
-                            status = mappings.statuses[result["status_id"]]
+                        if ("status_id" in result and result["status_id"] != None and mappings.result_statuses[result["status_id"]]):
+                            status = mappings.result_statuses[result["status_id"]]
                         data = {
                             "case_id": cases_map[result['test_id']],
                             "status": status,
@@ -304,6 +303,7 @@ class QaseService:
             if response.status:
                 return response.result[0].to_dict()
         except Exception as e:
+            raise e
             self.logger.log(f'Exception when calling AttachmentsApi->upload_attachment: {e}')
 
     def create_milestone(self, project_code, title, description, status, due_date):

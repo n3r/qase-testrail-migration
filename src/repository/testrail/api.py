@@ -10,11 +10,17 @@ class TestrailApiRepository:
     def get_users(self, limit = 250, offset = 0):
         return self.client.get('get_users/' + f'&limit={limit}&offset={offset}')
     
+    def get_groups(self, limit = 250, offset = 0):
+        return self.client.get('get_groups/' + f'&limit={limit}&offset={offset}')
+    
     def get_case_types(self):
         return self.client.get('get_case_types')
     
-    def get_statuses(self):
+    def get_result_statuses(self):
         return self.client.get('get_statuses')
+    
+    def get_case_statuses(self):
+        return self.client.get('get_case_statuses')
     
     def get_priorities(self):
         return self.client.get('get_priorities')

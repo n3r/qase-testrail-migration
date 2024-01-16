@@ -36,39 +36,13 @@ Create a new config file from the example or use template:
     "tests": {
         "preserve_ids": true,
         "fields": [],
-        "types": {
-            "1": "other",
-            "2": "smoke",
-            "3": "regression",
-            "4": "security",
-            "5": "usability",
-            "6": "performance",
-            "7": "acceptance",
-            "8": "functional",
-            "9": "compatibility",
-            "10": "integration",
-            "11": "exploratory"
-        },
-        "priorities": {
-            "0": "Not set",
-            "1": "High",
-            "2": "Medium",
-            "3": "Low"
-        },
         "refs": {
             "enable": true,
             "url": "http://localhost:8899/"
         }
     },
     "runs": {
-        "created_after": 1672524000,
-        "statuses": {
-            "1": "passed",
-            "2": "blocked",
-            "3": "skipped",
-            "4": "skipped",
-            "5": "failed"
-        }
+        "created_after": 1672524000
     },
     "users": {
         "default": 1,

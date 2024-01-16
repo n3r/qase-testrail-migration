@@ -4,7 +4,8 @@ class Mappings:
         self.users = {}
         self.types = {}
         self.priorities = {}
-        self.statuses = {}
+        self.result_statuses = {}
+        self.case_statuses = {}
         self.custom_fields = {}
         self.milestones = {}
         self.projects = []

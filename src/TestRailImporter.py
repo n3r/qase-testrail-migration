@@ -19,72 +19,71 @@ class TestRailImporter:
         self.mappings = Mappings(self.config.get('users.default'))
 
     def start(self):
-        #try:
-            # Step 1. Build users map
-            self.mappings = Users(
-                self.qase_service, 
-                self.testrail_service, 
-                self.logger, 
-                self.mappings,
-                self.config,
-                self.qase_scim_service,
-            ).import_users()
+        # Step 1. Build users map
+        self.mappings = Users(
+            self.qase_service, 
+            self.testrail_service, 
+            self.logger, 
+            self.mappings,
+            self.config,
+            self.qase_scim_service,
+        ).import_users()
 
-            # Step 2. Import project and build projects map
-            self.mappings = Projects(
-                self.qase_service, 
-                self.testrail_service, 
-                self.logger, 
-                self.mappings,
-                self.config
-            ).import_projects()
+        # Step 2. Import project and build projects map
+        self.mappings = Projects(
+            self.qase_service, 
+            self.testrail_service, 
+            self.logger, 
+            self.mappings,
+            self.config
+        ).import_projects()
+        
+        # Step 3. Import custom fields
+        self.mappings = Fields(
+            self.qase_service, 
+            self.testrail_service, 
+            self.logger, 
+            self.mappings,
+            self.config,
+        ).import_fields()
+
+        # Step 4. Import projects data
+        for project in self.mappings.projects:
+            self.logger.print_group(f'Importing project: {project["name"]}' 
+                                    + (' (' 
+                                    + project['suite_title'] 
+                                    + ')' if 'suite_title' in project else ''))
             
-            # Step 3. Import custom fields
-            self.mappings = Fields(
+            self.mappings = Milestones(
                 self.qase_service, 
                 self.testrail_service, 
                 self.logger, 
                 self.mappings,
+            ).import_milestones(project)
+
+            self.mappings = Suites(
+                self.qase_service, 
+                self.testrail_service, 
+                self.logger, 
+                self.mappings, 
+                self.config
+            ).import_suites(project)
+
+            Cases(
+                self.qase_service, 
+                self.testrail_service, 
+                self.logger, 
+                self.mappings, 
+                self.config
+            ).import_cases(project)
+
+            Runs(
+                self.qase_service, 
+                self.testrail_service, 
+                self.logger, 
+                self.mappings, 
                 self.config,
-            ).import_fields()
+                project
+            ).import_runs()
 
-            # Step 4. Import projects data
-            for project in self.mappings.projects:
-                self.logger.print_group(f'Importing project: {project["name"]}' 
-                                        + (' (' 
-                                        + project['suite_title'] 
-                                        + ')' if 'suite_title' in project else ''))
-                
-                self.mappings = Milestones(
-                    self.qase_service, 
-                    self.testrail_service, 
-                    self.logger, 
-                    self.mappings,
-                ).import_milestones(project)
-
-                self.mappings = Suites(
-                    self.qase_service, 
-                    self.testrail_service, 
-                    self.logger, 
-                    self.mappings, 
-                    self.config
-                ).import_suites(project)
-
-                Cases(
-                    self.qase_service, 
-                    self.testrail_service, 
-                    self.logger, 
-                    self.mappings, 
-                    self.config
-                ).import_cases(project)
-
-                Runs(
-                    self.qase_service, 
-                    self.testrail_service, 
-                    self.logger, 
-                    self.mappings, 
-                    self.config,
-                    project
-                ).import_runs()
-
-            exit()
+        exit()

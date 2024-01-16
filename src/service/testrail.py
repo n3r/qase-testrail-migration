@@ -36,11 +36,17 @@ class TestrailService:
     def get_users(self, limit: int = 250, offset: int = 0):
         return self.repository.get_users(limit, offset)
     
+    def get_groups(self, limit: int = 250, offset: int = 0):
+        return self.repository.get_groups(limit, offset)
+    
     def get_case_types(self):
         return self.repository.get_case_types()
     
-    def get_statuses(self):
-        return self.repository.get_statuses()
+    def get_result_statuses(self):
+        return self.repository.get_result_statuses()
+    
+    def get_case_statuses(self):
+        return self.repository.get_case_statuses()
     
     def get_priorities(self):
         return self.repository.get_priorities()

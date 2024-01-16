@@ -24,17 +24,19 @@ class Fields:
         self.map = {}
 
     def import_fields(self):
-        self.logger.log('Importing system fields from TestRail')
-
+        self.logger.log('Loading custom fields from Qase')
         qase_custom_fields = self.qase.get_case_custom_fields()
+        self.logger.log('Loading custom fields from TestRail')
         testrail_custom_fields = self.testrail.get_case_fields()
+        self.logger.log('Loading system fields from Qase')
         qase_system_fields = self.qase.get_system_fields()
         for field in qase_system_fields:
             self.system_fields.append(field.to_dict())
 
         self._create_types_map()
         self._create_priorities_map()
-        self._create_statuses_map()
+        self._create_result_statuses_map()
+        #self._create_case_statuses_map()
 
         total = len(testrail_custom_fields)
         
@@ -149,10 +151,10 @@ class Fields:
 
         self.logger.log('Priorities map was created')
 
-    def _create_statuses_map(self):
+    def _create_result_statuses_map(self):
         self.logger.log('Creating statuses map')
 
-        tr_statuses = self.testrail.get_statuses()
+        tr_statuses = self.testrail.get_result_statuses()
         qase_statuses = []
 
         for field in self.system_fields:
@@ -161,9 +163,28 @@ class Fields:
                     qase_statuses.append(option)
 
         for tr_status in tr_statuses:
-            self.mappings.statuses[tr_status['id']] = 1
+            self.mappings.result_statuses[tr_status['id']] = 1
             for qase_status in qase_statuses:
                 if tr_status['name'].lower() == qase_status['slug'].lower():
-                    self.mappings.statuses[tr_status['id']] = qase_status['slug']
+                    self.mappings.result_statuses[tr_status['id']] = qase_status['slug']
 
-        self.logger.log('Statuses map was created')
+        self.logger.log('Result statuses map was created')
+
+    def _create_case_statuses_map(self):
+        self.logger.log('Creating case statuses map')
+
+        tr_statuses = self.testrail.get_case_statuses()
+        qase_statuses = []
+
+        for field in self.system_fields:
+            if field['slug'] == 'status':
+                for option in field['options']:
+                    qase_statuses.append(option)
+
+        for tr_status in tr_statuses:
+            self.mappings.case_statuses[tr_status['case_status_id']] = 1
+            for qase_status in qase_statuses:
+                if tr_status['name'].lower() == qase_status['slug'].lower():
+                    self.mappings.case_statuses[tr_status['case_status_id']] = qase_status['id']
+
+        self.logger.log('Case statuses map was created')

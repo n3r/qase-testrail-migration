@@ -73,6 +73,7 @@ class Cases:
 
             data = self._set_priority(case=case, data=data)
             data = self._set_type(case=case, data=data)
+            data = self._set_status(case=case, data=data)
             data = self._set_suite(case=case, data=data)
             data = self._set_refs(case=case, data=data)
 
@@ -173,6 +174,12 @@ class Cases:
     # Done
     def _set_type(self, case: dict, data: dict) -> dict:
         data['type'] = self.mappings.types[case['type_id']] if case['type_id'] in self.mappings.types else 1
+        return data
+    
+    def _set_status(self, case: dict, data: dict) -> dict:
+        # Not used yet, as testrail doesn't return case statuses
+        return data
+        data['status'] = self.mappings.case_statuses[case['status_id']] if case['status_id'] in self.mappings.case_statuses else 1
         return data
     
     # Done

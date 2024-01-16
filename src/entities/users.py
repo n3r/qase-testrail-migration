@@ -33,6 +33,7 @@ class Users:
         if (self.scim != None and self.config.get('users.create')):
             self.create_group()
             self.create_users()
+            self.import_groups()
 
         self.build_map()
 
@@ -48,7 +49,7 @@ class Users:
             flag = False
             for qase_user in qase_users:
                 qase_user = qase_user.to_dict()
-                if (testrail_user['email'] == qase_user['email']):
+                if (testrail_user['email'].lower() == qase_user['email'].lower()):
                     self.mappings.users[testrail_user['id']] = qase_user['id']
                     flag = True
                     self.logger.log(f"User {testrail_user['email']} found in Qase as {qase_user['email']}")
@@ -57,7 +58,7 @@ class Users:
                 # Not found, using default user
                 self.mappings.users[testrail_user['id']] = self.config.get('users.default')
                 self.logger.log(f"User {testrail_user['email']} not found in Qase, using default user.")
-            self.logger.print_status('Importing users', i, total)
+            self.logger.print_status('Building users map', i, total)
     
     def create_group(self):
         if (self.config.get('users.group_name') != None):
@@ -73,9 +74,10 @@ class Users:
         for testrail_user in self.testrail_users:
             flag = False
             for qase_user in qase_users:
-                if (testrail_user['email'] == qase_user['userName']):
+                if (testrail_user['email'].lower() == qase_user['userName'].lower()):
                     # We have found a user. No need to create it.
                     ids.append(qase_user['id'])
+                    self.map[testrail_user['id']] = qase_user['id']
                     flag = True
             if (flag == False):
                 # Not found, using default user
@@ -87,6 +89,7 @@ class Users:
                     try:
                         self.logger.log(f"Adding user {testrail_user['email']} to group")
                         ids.append(user_id)
+                        self.map[testrail_user['id']] = user_id
                     except Exception as e:
                         self.logger.log(f"Failed to add user {testrail_user['email']} to group")
                         self.logger.log(e)
@@ -136,3 +139,32 @@ class Users:
         )
         self.logger.log(f"User {testrail_user['email']} created in Qase with id {user_id}")
         return user_id
+    
+    def import_groups(self):
+        self.logger.log("Importing groups")
+        groups = self.get_all_groups()
+        for group in groups:
+            self.logger.log(f"Importing group {group['name']}")
+            group_id = self.scim.create_group(group['name'])
+            for id in group['user_ids']:
+                if (id in self.map):
+                    self.logger.log(f"Adding user {id} to group {group['name']}")
+                    self.scim.add_user_to_group(group_id, self.map[id])
+
+    def get_all_groups(self):
+        self.logger.log("Getting groups from TestRail")
+        limit = 250
+        offset = 0
+        result = []
+        while True:
+            groups = self.testrail.get_groups(limit, offset)
+            if ('groups' in groups and groups['groups'] != None):
+                groups = groups['groups']
+
+            result = result + groups
+
+            if (len(groups) < limit):
+                break
+
+            offset += limit
+        return result
