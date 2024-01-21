@@ -31,7 +31,7 @@ Create a new config file from the example or use template:
     },
     "projects": {
         "import": [],
-        "completed": true
+        "status": "all"
     },
     "tests": {
         "preserve_ids": true,
@@ -47,7 +47,11 @@ Create a new config file from the example or use template:
     "users": {
         "default": 1,
         "create": true,
-        "group_name": "Migration from TestRail"
+        "inactive": true
+    },
+    "groups": {
+        "create": true,
+        "name": "Migration from TestRail"
     }
 }
 ```
@@ -57,20 +61,29 @@ Required fields to fill:
 - `qase.host` - Qase host
 - `qase.api` - API token from Qase
 - `qase.scim` - SCIM token from Qase
+- `qase.ssl` - If set to `true` migrator will use `https` instead of `http` in all requests
 - `testrail.connection` - Type of connection to TestRail. Can be `api` or `db`
 - `testrail.api.host` - URL of your TestRail instance
 - `testrail.api.user` - Email of user in TestRail. This user should have *administrator* access rights
 - `testrail.api.password` - Password of user in TestRail
-- `projects` - List of projects to migrate. You can specify only name of project.
-- `tests.fields` - A list of custom fields from TestRail to import (use "label" as a field value). Keep empty to import all fields
-- `tests.types` - ids and values for "type" field from Qase. In the example you can find default values created for a new workspace in Qase. If you have changed the values, you can pass an updated map here. 
-- `tests.priorities` - ids and values for "priority" field from Qase. In the example you can find default values created for a new workspace in Qase. If you have changed the values, you can pass an updated map here.
+- `projects.import` - List of projects to migrate. You can specify only name of project. Example: `["Project 1", "Project 2"]`
+- `projects.status` - Status of projects to migrate. Can be `all`, `active` or `inactive`. 
 - `users.default` - ID of user in Qase. This user will be used as author of all test cases if migrator unable to match user from TestRail to Qase
 - `users.create` - If set to `true` migrator will create new users in Qase if it unable to match user from TestRail to Qase. *SCIM API token is required for this option.*
-- `users.group_name` - Name of group in Qase where new users will be added. *SCIM API token is required for this option.*
 - `users.inactive` - If set to `true` migrator will migrate all users from TestRail to Qase. *SCIM API token is required for this option.*
+- `groups.create` - If set to `true` migrator will create new groups in Qase if it unable to match group from TestRail to Qase. *SCIM API token is required for this option.*
+- `groups.name` - Name of group in Qase where new users will be added. *SCIM API token is required for this option.*
+- `runs.created_after` - Unix timestamp. Migrator will migrate only runs created after this date. *Optional*
+- `tests.preserve_ids` - If set to `true` migrator will try to preserve test case IDs from TestRail. *Optional*
+- `tests.fields` - List of fields to migrate. If empty, migrator will migrate all fields. *Optional*
+- `tests.refs.enable` - If set to `true` migrator will add references to TestRail test cases. *Optional*
+- `tests.refs.url` - URL of TestRail instance. *Optional*
 
-### 3. Run
+### 3. Prepare system fields
+
+Right now, there is no option to modify system fields in Qase through the API. If you want to migrate system fields values (like test result statuses or priority), you should add these values manually in Qase before migration. That can be done [here](https://app.qase.io/workspace/fields).
+
+### 4. Run
 
 ```bash
 python start.py

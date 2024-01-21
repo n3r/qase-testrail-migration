@@ -12,6 +12,7 @@ class Projects:
         self.logger = logger
         self.mappings = mappings
         self.existing_codes = set()
+        self.logger.divider()
 
     def import_projects(self):
         self.logger.log('Importing projects from TestRail')
@@ -24,16 +25,20 @@ class Projects:
             self.logger.print_status('Importing projects', i, total)
 
             for project in testrail_projects['projects']:
-                self.logger.log(f'Importing project: {project["name"]}')
+                self.logger.log(f'Importing project: {project["name"]}. Is Completed: {project["is_completed"]}')
                 if (self._check_import(project['name'], project['is_completed'])):
                     data = {
                         "testrail_id": project['id'],
                         "name": project['name'],
                         "suite_mode": project['suite_mode']
                     }
-                    data['code'] = self._create_project(project['name'], project['announcement'])
-                    self.mappings.projects.append(data)
-                    self.mappings.project_map[project['id']] = data['code']
+                    code = self._create_project(project['name'], project['announcement'])
+                    if code:
+                        data['code'] = code
+                        self.mappings.projects.append(data)
+                        self.mappings.project_map[project['id']] = data['code']
+                    else:
+                        self.logger.log(f'Failed to create project: {project["name"]}')
                 else:
                     self.logger.log(f'Skipping project: {project["name"]}')
                 i += 1
@@ -44,21 +49,25 @@ class Projects:
     
     # Function checks if the project should be imported
     def _check_import(self, title: str, is_completed: bool) -> bool:
+        project_status = self.config.get('projects.status')
+        projects_to_import = self.config.get('projects.import')
+        if not project_status:
+            project_status = 'all'
 
-        # If the project is completed and import_completed is False, skip the project
-        if is_completed and not self.config.get('projects.completed'):
+        # If project is completed and we want to import only active projects, skip the project
+        if is_completed and project_status == 'active':
             return False
-
-        # If project name is in the list of projects to import, return True
-        projects = self.config.get('projects.import')
-        if not projects:
-            return True
-        for project in projects:
-            if isinstance(project, str) and project == title:
-                return True
-            elif isinstance(project, dict) and project['name'] == title:
-                return True
-        return False
+        
+        # If project is active and we want to import only completed projects, skip the project
+        if not is_completed and project_status == 'completed':
+            return False
+        
+        # If we have a list of projects to import and the current project is not in the list, skip the project
+        if projects_to_import and title not in projects_to_import:
+            return False
+        
+        # In all other cases, import the project
+        return True
     
     # Method generates short code that will be used as a project code in from a string
     def _old_short_code(self, s: str) -> str:
@@ -109,7 +118,6 @@ class Projects:
     # Method creates project in Qase
     def _create_project(self, title: str, description: Optional[str]) -> Union[str, None]:
         code = self._short_code(title)
-        result = self.qase.create_project(title, description, code, self.mappings.group_id)
-        if result:
+        if self.qase.create_project(title, description, code, self.mappings.group_id):
             return code
         return None

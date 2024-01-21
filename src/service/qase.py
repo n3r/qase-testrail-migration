@@ -28,9 +28,13 @@ class QaseService:
         self.config = config
         self.logger = logger
 
+        ssl = 'http://'
+        if (config.get('qase.ssl') == None or config.get('qase.ssl') == True):
+            ssl = 'https://'
+
         configuration = Configuration()
         configuration.api_key['TokenAuth'] = config.get('qase.api_token')
-        configuration.host = f'https://api.{config.get("qase.host")}/v1'
+        configuration.host = f'{ssl}api-{config.get("qase.host")}/v1'
         configuration.ssl_ca_cert = certifi.where()
 
         self.client = ApiClient(configuration)
@@ -43,7 +47,7 @@ class QaseService:
             if (api_response.status and api_response.result.entities):
                 return api_response.result.entities
         except ApiException as e:
-            self.lo("Exception when calling AuthorsApi->get_authors: %s\n" % e)
+            self.logger.log("Exception when calling AuthorsApi->get_authors: %s\n" % e)
     
     def get_all_users(self, batch_size = 100):
         flag = True
@@ -104,7 +108,7 @@ class QaseService:
             'is_visible': True,
             'is_required': False,
         }
-        if (field['configs'][0]['context']['is_global'] == True):
+        if (not field['configs'] or field['configs'][0]['context']['is_global'] == True):
             data['is_enabled_for_all_projects'] = True
         else:
             data['is_enabled_for_all_projects'] = False
@@ -145,6 +149,16 @@ class QaseService:
             result[key] = value
         return result
     
+    def get_projects(self):
+        try:
+            api_instance = ProjectsApi(self.client)
+            # Get all projects.
+            api_response = api_instance.get_projects(100, 0)
+            if (api_response.status and api_response.result):
+                return api_response.result
+        except ApiException as e:
+            self.logger.log("Exception when calling ProjectsApi->get_projects: %s\n" % e)
+    
     def create_project(self, title, description, code, group_id = None):
         api_instance = ProjectsApi(self.client)
 
@@ -172,7 +186,6 @@ class QaseService:
             
             self.logger.log('Exception when calling ProjectsApi->create_project: %s\n' % e)
             return False
-            raise ImportException(e)
         
     def create_suite(self, code: str, title: str, description: str, parent_id = None) -> int:
         api_instance = SuitesApi(self.client)
@@ -204,7 +217,8 @@ class QaseService:
 
         data = {
             'title': run['name'],
-            'start_time': datetime.fromtimestamp(run['created_on']).strftime('%Y-%m-%d %H:%M:%S')
+            'start_time': datetime.fromtimestamp(run['created_on']).strftime('%Y-%m-%d %H:%M:%S'),
+            'author_id': run['author_id']
         }
 
         if (run['is_completed']):
@@ -218,7 +232,6 @@ class QaseService:
 
         try:
             response = api_instance.create_run(code=project_code, run_create=RunCreate(**data))
-            self.logger.log(f'Run was created: {response.result.id}')
             return response.result.id
         except Exception as e:
             self.logger.log(f'Exception when calling RunsApi->create_run: {e}')
@@ -244,7 +257,11 @@ class QaseService:
 
                     if result['test_id'] in cases_map:
                         status = 'skipped'
-                        if ("status_id" in result and result["status_id"] != None and mappings.result_statuses[result["status_id"]]):
+                        if ("status_id" in result 
+                            and result["status_id"] != None 
+                            and result["status_id"] in mappings.result_statuses
+                            and mappings.result_statuses[result["status_id"]]
+                            ):
                             status = mappings.result_statuses[result["status_id"]]
                         data = {
                             "case_id": cases_map[result['test_id']],
@@ -253,19 +270,19 @@ class QaseService:
                             "comment": str(result['comment'])
                         }
 
-                    if ('attachments' in result and len(result['attachments']) > 0):
-                        data['attachments'] = result['attachments']
+                        if ('attachments' in result and len(result['attachments']) > 0):
+                            data['attachments'] = result['attachments']
 
-                    if (start_time):
-                        data['start_time'] = start_time
+                        if (start_time):
+                            data['start_time'] = start_time
 
-                    #if (result['defects']):
-                        #self.defects.append({"case_id": result["case_id"],"defects": result['defects'],"run_id": qase_run_id})
+                        #if (result['defects']):
+                            #self.defects.append({"case_id": result["case_id"],"defects": result['defects'],"run_id": qase_run_id})
 
-                    if result['created_by']:
-                        data['author_id'] = mappings.get_user_id(result['created_by'])
+                        if result['created_by']:
+                            data['author_id'] = mappings.get_user_id(result['created_by'])
 
-                    res.append(data)
+                        res.append(data)
 
             if (len(res) > 0):
                 api_results = ResultsApi(self.client)
@@ -277,6 +294,7 @@ class QaseService:
                             results=res
                         )
                     )
+                
     def convert_to_seconds(self, time_str: str) -> int:
         total_seconds = 0
         components = time_str.split()

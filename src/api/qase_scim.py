@@ -3,10 +3,13 @@ import requests
 import json
 
 class QaseScimClient:
-    def __init__(self, base_url, token, max_retries=3, backoff_factor=1):
+    def __init__(self, base_url, token, max_retries=3, backoff_factor=1, ssl=True):
         if not base_url.endswith('/'):
             base_url += '/'
-        self.__url = 'https://app.' + base_url + 'scim/v2/'
+        if ssl:
+            self.__url = 'https://' + base_url + 'scim/v2/'
+        else:
+            self.__url = 'http://' + base_url + 'scim/v2/'
 
         self.headers = {
             'Authorization': 'Bearer ' + token,

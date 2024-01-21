@@ -13,7 +13,11 @@ class QaseScimService:
         self.config = config
         self.logger = logger
 
-        self.client = QaseScimClient(self.config.get('qase.host'), self.config.get('qase.scim_token'))
+        self.client = QaseScimClient(
+            base_url=self.config.get('qase.host'), 
+            token=self.config.get('qase.scim_token'), 
+            ssl=bool(self.config.get('qase.ssl'))
+        )
 
     def create_user(self, email, first_name, last_name, roleTitle, is_active=True):
         try:

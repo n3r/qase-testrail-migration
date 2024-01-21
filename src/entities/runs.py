@@ -23,11 +23,12 @@ class Runs:
 
         self.created_after = self.config.get('runs.created_after')
         self.index = []
+        self.logger.divider()
 
     def import_runs(self) -> None:
-        self.logger.log(f'[{self.project["code"]}] Importing runs from TestRail project {self.project["name"]}')
+        self.logger.log(f'[{self.project["code"]}][Runs] Importing runs from TestRail project {self.project["name"]}')
         self._build_index()
-        self.logger.log(f'[{self.project["code"]}] Found {str(len(self.index))} runs')
+        self.logger.log(f'[{self.project["code"]}][Runs] Found {str(len(self.index))} runs')
         self.index.sort(key=lambda x: x['created_on'])
         i = 0
         for run in self.index:
@@ -36,7 +37,7 @@ class Runs:
             self._import_run(run)
 
     def _build_index(self) -> None:
-        self.logger.log(f'[{self.project["code"]}] Building runs index')
+        self.logger.log(f'[{self.project["code"]}][Runs] Building runs index')
         if self.project['suite_mode'] == 3:
             for suite_id in self.mappings.suites[self.project['code']]:
                 self._build_runs_index_for_suite(suite_id)
@@ -45,7 +46,7 @@ class Runs:
         self._build_plans_index()
 
     def _build_runs_index_for_suite(self, suite_id: int) -> None:
-        self.logger.log(f'[{self.project["code"]}] Building runs index for suite {suite_id}')
+        self.logger.log(f'[{self.project["code"]}][Runs] Building runs index for suite {suite_id}')
         limit = 250
         offset = 0
 
@@ -65,7 +66,8 @@ class Runs:
                     'created_on': run['created_on'],
                     'completed_on': run['completed_on'],
                     'is_completed': run['is_completed'],
-                    'milestone_id': run['milestone_id']
+                    'milestone_id': run['milestone_id'],
+                    'author_id': self.mappings.get_user_id(run['created_by']),
                 })
 
             if runs['size'] < limit:
@@ -74,15 +76,17 @@ class Runs:
             offset = offset + limit
 
     def _build_plans_index(self) -> None:
-        self.logger.log(f'[{self.project["code"]}] Building plans index')
+        self.logger.log(f'[{self.project["code"]}][Runs] Building plans index')
         limit = 250
         offset = 0
 
         while True:
+            self.logger.log(f'[{self.project["code"]}][Runs] Fetching plans from TestRail')
             plans = self.testrail.get_plans(self.project['testrail_id'], limit, offset)
             for plan in plans['plans']:
                 plan = self.testrail.get_plan(plan['id'])
                 if 'entries' in plan and plan['entries'] and len(plan['entries']) > 0:
+                    self.logger.log(f'[{self.project["code"]}][Runs] Fetching runs for plan {plan["id"]}')
                     for entry in plan['entries']:
                         for run in entry['runs']:
                             self.index.append({
@@ -92,7 +96,8 @@ class Runs:
                                 'completed_on': run['completed_on'],
                                 'plan_id': plan['id'],
                                 'is_completed': run['is_completed'],
-                                'milestone_id': run['milestone_id']
+                                'milestone_id': run['milestone_id'],
+                                'author_id': self.mappings.get_user_id(run['created_by']),
                             })
             if plans['size'] < limit:
                 break
@@ -102,7 +107,7 @@ class Runs:
     def _import_run(self, run: list) -> None:
         # Load testrail tests from the run ()
         cases_map = self.__get_cases_for_run(run)
-        self.logger.log(f'Found {str(len(cases_map))} cases in the run {run["name"]} [{run["id"]}]')
+        self.logger.log(f'[{self.project["code"]}][Runs] Found {str(len(cases_map))} cases in the run {run["name"]} [{run["id"]}]')
 
         milestone_id = self.mappings.milestones[self.project['code']][run['milestone_id']] if run['milestone_id'] in self.mappings.milestones[self.project['code']] else None
 
@@ -110,12 +115,12 @@ class Runs:
         qase_run_id = self.qase.create_run(run, self.project['code'], list(cases_map.values()), milestone_id)
 
         if (qase_run_id != None):
-            self.logger.log(f'Created a new run in Qase: {qase_run_id}')
+            self.logger.log(f'[{self.project["code"]}][Runs] Created a new run in Qase: {qase_run_id}')
 
             # Import results for the run
             self._import_results_for_run(run, qase_run_id, cases_map)
         else:
-            self.logger.log(f'Failed to create a new run in Qase for TestRail run {run["name"]} [{run["id"]}]')
+            self.logger.log(f'[{self.project["code"]}][Runs] Failed to create a new run in Qase for TestRail run {run["name"]} [{run["id"]}]')
 
     def _import_results_for_run(self, run: list, qase_run_id: str, cases_map: dict) -> None:
         limit = 250
@@ -129,12 +134,25 @@ class Runs:
             if results['size'] < limit:
                 break
 
-        self.logger.log(f'Found {str(len(run_results))} results for the run {run["name"]} [{run["id"]}]')
+        self.logger.log(f'[{self.project["code"]}][Runs] Found {str(len(run_results))} results for the run {run["name"]} [{run["id"]}]')
 
+        self.logger.log(f'[{self.project["code"]}][Runs] Merging comments for the run {run["name"]} [{run["id"]}]')
         run_results = self._merge_comments(run_results)
+
+        self.logger.log(f'[{self.project["code"]}][Runs] Sorting results for the run {run["name"]} [{run["id"]}]')
+        run_results = sorted(run_results, key=lambda x: x['created_on'])
         
-        # TODO: Split into 1000 chunks if more that 1000
-        self._import_results(run, qase_run_id, cases_map, run_results)
+        i = 0
+        for chunk in self._chunk_list_generator(run_results, 500):
+            i += 1
+            self.logger.log(f'[{self.project["code"]}][Runs] Importing results [Chunk {i}] for the run {run["name"]} [{run["id"]}]')
+            self._import_results(run, qase_run_id, cases_map, chunk)
+
+    def _chunk_list_generator(self, results, chunk_size = 500):
+        """Yield successive chunks from input_list."""
+        for i in range(0, len(results), chunk_size):
+            yield results[i:i + chunk_size]
+
 
     def _clean_results(self, results: list) -> list:
         clean_results = []
@@ -183,7 +201,7 @@ class Runs:
     def _import_results(self, tr_run, qase_run_id, cases_map, results) -> None:
         self.qase.send_bulk_results(
             tr_run,
-            sorted(results, key=lambda x: x['created_on']),
+            results,
             qase_run_id,
             self.project['code'],
             self.mappings,
@@ -229,5 +247,6 @@ class Runs:
                 process = False
             offset = offset + limit
             for test in tests['tests']:
-                cases_map[test['id']] = test['case_id']
+                if test['case_id']:
+                    cases_map[test['id']] = test['case_id']
         return cases_map

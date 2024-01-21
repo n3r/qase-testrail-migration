@@ -22,13 +22,14 @@ class Fields:
         self.system_fields = []
 
         self.map = {}
+        self.logger.divider()
 
     def import_fields(self):
-        self.logger.log('Loading custom fields from Qase')
+        self.logger.log('[Fields] Loading custom fields from Qase')
         qase_custom_fields = self.qase.get_case_custom_fields()
-        self.logger.log('Loading custom fields from TestRail')
+        self.logger.log('[Fields] Loading custom fields from TestRail')
         testrail_custom_fields = self.testrail.get_case_fields()
-        self.logger.log('Loading system fields from Qase')
+        self.logger.log('[Fields] Loading system fields from Qase')
         qase_system_fields = self.qase.get_system_fields()
         for field in qase_system_fields:
             self.system_fields.append(field.to_dict())
@@ -40,7 +41,7 @@ class Fields:
 
         total = len(testrail_custom_fields)
         
-        self.logger.log(f'Found {str(total)} custom fields')
+        self.logger.log(f'[Fields] Found {str(total)} custom fields')
 
         fields_to_import = self._get_fields_to_import(testrail_custom_fields)
 
@@ -52,7 +53,7 @@ class Fields:
                 if (field['type_id'] in self.mappings.custom_fields_type):
                     self._create_custom_field(field, qase_custom_fields)
             else:
-                self.logger.log(f'Skipping custom field: {field["name"]}')
+                self.logger.log(f'[Fields] Skipping custom field: {field["name"]}')
 
             if (field['type_id'] == 10):
                 self.mappings.step_fields.append(field['name'])
@@ -62,7 +63,7 @@ class Fields:
         return self.mappings
 
     def _get_fields_to_import(self, custom_fields):
-        self.logger.log('Building a map for fields to import')
+        self.logger.log('[Fields] Building a map for fields to import')
         fields_to_import = self.config.get('tests.fields')
         if fields_to_import is not None and len(fields_to_import) == 0 and not fields_to_import:
             for field in custom_fields:
@@ -75,7 +76,7 @@ class Fields:
         if (qase_fields and len(qase_fields) > 0):
             for qase_field in qase_fields:
                 if qase_field.title == field['label'] and self.mappings.custom_fields_type[field['type_id']] == self.mappings.qase_fields_type[qase_field.type.lower()]:
-                    self.logger.log('Custom field already exists: ' + field['label'])
+                    self.logger.log('[Fields] Custom field already exists: ' + field['label'])
                     if (qase_field.type.lower() in ("selectbox", "multiselect", "radio")):
                         field['qase_values'] = {}
                         values = json.loads(qase_field.value)
@@ -101,7 +102,7 @@ class Fields:
                         self.mappings.refs_id = qase_field.id
             
             if not self.mappings.refs_id and field is not None:
-                self.logger.log('Refs field not found. Creating a new one')
+                self.logger.log('[Fields] Refs field not found. Creating a new one')
                 data = {
                     'title': 'Refs',
                     'entity': 0, # 0 - case, 1 - run, 2 - defect,
@@ -114,7 +115,7 @@ class Fields:
                 self.mappings.refs_id = self.qase.create_custom_field(data)
 
     def _create_types_map(self):
-        self.logger.log('Creating types map')
+        self.logger.log('[Fields] Creating types map')
 
         tr_types = self.testrail.get_case_types()
         qase_types = []
@@ -130,10 +131,10 @@ class Fields:
                 if tr_type['name'].lower() == qase_type['slug'].lower():
                     self.mappings.types[tr_type['id']] = int(qase_type['id'])
         
-        self.logger.log('Types map was created')
+        self.logger.log('[Fields] Types map was created')
 
     def _create_priorities_map(self):
-        self.logger.log('Creating priorities map')
+        self.logger.log('[Fields] Creating priorities map')
 
         tr_priorities = self.testrail.get_priorities()
         qase_priorities = []
@@ -149,10 +150,10 @@ class Fields:
                 if tr_priority['name'].lower() == qase_priority['slug'].lower():
                     self.mappings.priorities[tr_priority['id']] = int(qase_priority['id'])
 
-        self.logger.log('Priorities map was created')
+        self.logger.log('[Fields] Priorities map was created')
 
     def _create_result_statuses_map(self):
-        self.logger.log('Creating statuses map')
+        self.logger.log('[Fields] Creating statuses map')
 
         tr_statuses = self.testrail.get_result_statuses()
         qase_statuses = []
@@ -163,15 +164,15 @@ class Fields:
                     qase_statuses.append(option)
 
         for tr_status in tr_statuses:
-            self.mappings.result_statuses[tr_status['id']] = 1
+            self.mappings.result_statuses[tr_status['id']] = 'skipped'
             for qase_status in qase_statuses:
                 if tr_status['name'].lower() == qase_status['slug'].lower():
                     self.mappings.result_statuses[tr_status['id']] = qase_status['slug']
 
-        self.logger.log('Result statuses map was created')
+        self.logger.log('[Fields] Result statuses map was created')
 
     def _create_case_statuses_map(self):
-        self.logger.log('Creating case statuses map')
+        self.logger.log('[Fields] Creating case statuses map')
 
         tr_statuses = self.testrail.get_case_statuses()
         qase_statuses = []
@@ -187,4 +188,4 @@ class Fields:
                 if tr_status['name'].lower() == qase_status['slug'].lower():
                     self.mappings.case_statuses[tr_status['case_status_id']] = qase_status['id']
 
-        self.logger.log('Case statuses map was created')
+        self.logger.log('[Fields] Case statuses map was created')

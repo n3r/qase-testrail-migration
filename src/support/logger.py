@@ -1,5 +1,5 @@
 import datetime
-import os
+import os, psutil
 
 class Logger:
     def __init__(self, debug: bool = False):
@@ -10,17 +10,22 @@ class Logger:
             os.makedirs(log_dir)
         self.log_file = os.path.join(log_dir, f'{timestamp}.log')
         self.debug = debug
+        self.process = psutil.Process()
         with open(self.log_file, 'w'):
             pass
 
     def log(self, message: str):
         now = datetime.datetime.now()
         time_str = now.strftime("%H:%M:%S")
-        log = f"[{time_str}] {message}\n"
+        memory = str(round(psutil.Process(os.getpid()).memory_info().rss / 1024 ** 2, 2))
+        log = f"[{time_str}][{memory}MB] {message}\n"
         if self.debug:
             print(log)
         with open(self.log_file, 'a') as f:
             f.write(log)
+
+    def divider(self):
+        self.log('-----------------------------------')
 
     def print_status(self, message: str, completed: int = 0, total: int = 0, level: int = 0):
         icon = '↪'

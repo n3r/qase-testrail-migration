@@ -22,9 +22,10 @@ class Suites:
         self.attachments = Attachments(self.qase, self.testrail, self.logger)
 
         self.suites_map = {}
+        self.logger.divider()
 
     def import_suites(self, project):
-        self.logger.log(f'[{project["code"]}] Importing suites from TestRail project {project["name"]}')
+        self.logger.log(f'[{project["code"]}][Suites] Importing suites from TestRail project {project["name"]}')
         if (project['suite_mode'] == 3):
             # Suites in testrail should be saved as suites in Qase
             suites = self.testrail.get_suites(project['testrail_id'])
@@ -56,10 +57,11 @@ class Suites:
             parent_id: Optional[int] = None
         ):
         sections = self._get_sections(testrail_project_id, testrail_suite_id)
+        self.logger.log(f"[{qase_code}][Suites] Found {len(sections)} sections")
 
         i = 1
         for section in sections:
-            self.logger.log(f"[{qase_code}] Creating suite in Qase: {section['name']} ({section['id']})")
+            self.logger.log(f"[{qase_code}][Suites] Creating suite in Qase: {section['name']} ({section['id']})")
             self.logger.print_status('['+qase_code+'] Importing sections', i, len(sections), 1)
 
             if (section['parent_id'] == None and parent_id != None):
@@ -93,5 +95,4 @@ class Suites:
         sections = self.testrail.get_sections(project_id, limit, offset, suite_id)
         if (len(sections) > 0 and len(sections) == limit):
             sections += self._get_sections(project_id, suite_id, offset + limit, limit)
-        self.logger.log(f"Found {len(sections)} sections")
         return sections

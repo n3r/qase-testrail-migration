@@ -18,6 +18,7 @@ class Cases:
         self.mappings = mappings
         self.attachments = Attachments(self.qase, self.testrail, self.logger)
         self.total = 0
+        self.logger.divider()
 
     def import_cases(self, project: dict):
         self.project = project
@@ -45,13 +46,15 @@ class Cases:
             cases = self.testrail.get_cases(self.project['testrail_id'], suite_id, limit, offset)
             if cases:
                 self.logger.print_status('['+self.project['code']+'] Importing test cases', self.total, self.total+cases['size'], 1)
-                self.logger.log(f'Importing cases from {offset} to {offset + limit} for suite {suite_id}')
-                self.qase.create_cases(self.project['code'], self._prepare_cases(cases))
+                self.logger.log(f'[{self.project["code"]}][Tests] Importing cases from {offset} to {offset + limit} for suite {suite_id}')
+                data = self._prepare_cases(cases)
+                if data:
+                    self.qase.create_cases(self.project['code'], data)
                 self.total = self.total + cases['size']
                 self.logger.print_status('['+self.project['code']+'] Importing test cases', self.total, self.total, 1)
             return cases['size']
         except Exception as e:
-            self.logger.log(f"Error processing cases for suite {suite_id}: {e}")
+            self.logger.log(f"[{self.project['code']}][Tests] Error processing cases for suite {suite_id}: {e}")
             return 0
     
     def _prepare_cases(self, cases: List) -> List:
@@ -134,7 +137,7 @@ class Cases:
                         )
                         i += 1
                     else:
-                        self.logger.log(f'Case {case["title"]} has invalid step {step}')
+                        self.logger.log(f'[{self.project["code"]}][Tests] Case {case["title"]} has invalid step {step}')
                 data['steps'] = steps
         return data
     
@@ -143,7 +146,7 @@ class Cases:
         values = self.__split_values(custom_field['configs'][0]['options']['items'])
         if type(value) == str or type(value) == int:
             if str(value) not in values.keys():
-                self.logger.log(f'Custom field {custom_field["name"]} has invalid value {value}')
+                self.logger.log(f'[{self.project["code"]}][Tests] Custom field {custom_field["name"]} has invalid value {value}')
                 return None
         elif type(value) == list:
             filtered_values = []
@@ -151,7 +154,7 @@ class Cases:
                 if str(item) in values.keys():
                     filtered_values.append(item)
                 else:
-                    self.logger.log(f'Custom field {custom_field["name"]} has invalid value {value}')
+                    self.logger.log(f'[{self.project["code"]}][Tests] Custom field {custom_field["name"]} has invalid value {value}')
             if len(filtered_values) == 0:
                 return None
             else:

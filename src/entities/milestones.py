@@ -9,9 +9,10 @@ class Milestones:
         self.mappings = mappings
 
         self.map = {}
+        self.logger.divider()
 
     def import_milestones(self, project) -> Mappings:
-        self.logger.log("Importing milestones")
+        self.logger.log(f"[{project['code']}][Milestones] Importing milestones")
         limit = 250
         offset = 0
 
@@ -22,11 +23,12 @@ class Milestones:
             if tr_milestones['size'] < limit:
                 break
             offset += limit
+        self.logger.log(f"[{project['code']}][Milestones] Found {len(milestones)} milestones")
 
         i = 0
         self.logger.print_status(f'[{project["code"]}] Importing milestones', i, len(milestones), 1)
         for milestone in milestones:
-            self.logger.log(f"Importing milestone {milestone['name']}")
+            self.logger.log(f"[{project['code']}][Milestones] Importing milestone {milestone['name']}")
             
             id = self.qase.create_milestone(
                 project['code'], 

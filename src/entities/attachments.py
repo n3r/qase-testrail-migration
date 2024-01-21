@@ -5,8 +5,6 @@ from typing import List
 
 from io import BytesIO
 
-import tempfile
-
 from urllib.parse import unquote
 
 import re
@@ -31,7 +29,8 @@ class Attachments:
         result = []
         self.import_attachments(code, attachments)
         for attachment in attachments:
-            result.append(self.map[attachment]['hash'])
+            if attachment in self.map and 'hash' in self.map[attachment]:
+                result.append(self.map[attachment]['hash'])
         return result
     
     def check_attachments(self, string: str) -> List:
@@ -42,11 +41,11 @@ class Attachments:
     def import_attachments(self, code: str, testrail_attachments: List) -> None:
         for attachment in testrail_attachments:
             try: 
-                self.logger.log(f'Importing attachment: {attachment}')
+                self.logger.log(f'[Attachments] Importing attachment: {attachment}')
                 data = self.testrail.get_attachment(attachment)
                 attachment_data = self._get_attachment_meta(data)
             except Exception as e:
-                self.logger.log(f'Exception when calling TestRail->get_attachment: {e}')
+                self.logger.log(f'[Attachments] Exception when calling TestRail->get_attachment: {e}')
                 continue
             self.map[attachment] = self.qase.upload_attachment(code, attachment_data)
         return
@@ -71,5 +70,5 @@ class Attachments:
                 string
             )
         except Exception as e:
-            self.logger.log(f'Exception when replacing attachments: {e}')
+            self.logger.log(f'[Attachments] Exception when replacing attachments: {e}')
         return string
