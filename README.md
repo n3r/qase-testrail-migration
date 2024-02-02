@@ -19,7 +19,9 @@ Create a new config file from the example or use template:
     "qase": {
         "api_token": "<QASE_API_TOKEN>",
         "scim_token": "<QASE_SCIM_API_TOKEN>",
-        "host": "<QASE_API_HOST|Default:qase.io>"
+        "host": "<QASE_API_HOST|Default:qase.io>",
+        "ssl": true,
+        "enterprise": false
     },
     "testrail": {
         "connection": "api",
@@ -31,7 +33,7 @@ Create a new config file from the example or use template:
     },
     "projects": {
         "import": [],
-        "status": "all"
+        "status": "all|active|archived"
     },
     "tests": {
         "preserve_ids": true,
@@ -50,9 +52,12 @@ Create a new config file from the example or use template:
         "inactive": true
     },
     "groups": {
-        "create": true,
-        "name": "Migration from TestRail"
-    }
+        "create": false,
+        "name": "TestRail Migration"
+    },
+    "prefix": "local",
+    "sync": false,
+    "cache": true
 }
 ```
 

@@ -2,7 +2,9 @@
     "qase": {
         "api_token": "<QASE_API_TOKEN>",
         "scim_token": "<QASE_SCIM_API_TOKEN>",
-        "host": "<QASE_API_HOST|Default:qase.io>"
+        "host": "<QASE_API_HOST|Default:qase.io>",
+        "ssl": true,
+        "enterprise": false
     },
     "testrail": {
         "connection": "api",
@@ -14,7 +16,7 @@
     },
     "projects": {
         "import": [],
-        "completed": true
+        "status": "all|active|archived"
     },
     "tests": {
         "preserve_ids": true,
@@ -30,7 +32,13 @@
     "users": {
         "default": 1,
         "create": true,
-        "group_name": "Migration from TestRail",
         "inactive": true
-    }
+    },
+    "groups": {
+        "create": false,
+        "name": "TestRail Migration"
+    },
+    "prefix": "local",
+    "sync": false,
+    "cache": true
 }
