@@ -37,7 +37,6 @@ class Fields:
         self._create_types_map()
         self._create_priorities_map()
         self._create_result_statuses_map()
-        #self._create_case_statuses_map()
 
         total = len(testrail_custom_fields)
         
@@ -47,6 +46,7 @@ class Fields:
 
         i = 0
         self.logger.print_status('Importing custom fields', i, total)
+        self.mappings.stats.add_custom_field('testrail', total)
         for field in testrail_custom_fields:
             i += 1
             if field['name'] in fields_to_import and field['is_active']:
@@ -89,8 +89,10 @@ class Fields:
         data = self.qase.prepare_custom_field_data(field, self.mappings)
         qase_id = self.qase.create_custom_field(data)
         if qase_id > 0:
+            self.logger.log('[Fields] Custom field created: ' + field['label'])
             field['qase_id'] = qase_id
             self.mappings.custom_fields[field['name']] = field
+            self.mappings.stats.add_custom_field('qase')
         
     def _create_refs_field(self, qase_custom_fields):
         if self.config.get('tests.refs.enable'):
@@ -128,7 +130,7 @@ class Fields:
         for tr_type in tr_types:
             self.mappings.types[tr_type['id']] = 1
             for qase_type in qase_types:
-                if tr_type['name'].lower() == qase_type['slug'].lower():
+                if tr_type['name'].lower() == qase_type['title'].lower():
                     self.mappings.types[tr_type['id']] = int(qase_type['id'])
         
         self.logger.log('[Fields] Types map was created')
@@ -147,7 +149,7 @@ class Fields:
         for tr_priority in tr_priorities:
             self.mappings.priorities[tr_priority['id']] = 1
             for qase_priority in qase_priorities:
-                if tr_priority['name'].lower() == qase_priority['slug'].lower():
+                if tr_priority['name'].lower() == qase_priority['title'].lower():
                     self.mappings.priorities[tr_priority['id']] = int(qase_priority['id'])
 
         self.logger.log('[Fields] Priorities map was created')
@@ -166,7 +168,7 @@ class Fields:
         for tr_status in tr_statuses:
             self.mappings.result_statuses[tr_status['id']] = 'skipped'
             for qase_status in qase_statuses:
-                if tr_status['name'].lower() == qase_status['slug'].lower():
+                if tr_status['label'].lower() == qase_status['title'].lower():
                     self.mappings.result_statuses[tr_status['id']] = qase_status['slug']
 
         self.logger.log('[Fields] Result statuses map was created')

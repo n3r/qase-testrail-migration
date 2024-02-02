@@ -19,7 +19,7 @@ class Suites:
         self.config = config
         self.logger = logger
         self.mappings = mappings
-        self.attachments = Attachments(self.qase, self.testrail, self.logger)
+        self.attachments = Attachments(self.qase, self.testrail, self.logger, self.mappings, self.config)
 
         self.suites_map = {}
         self.logger.divider()
@@ -29,6 +29,7 @@ class Suites:
         if (project['suite_mode'] == 3):
             # Suites in testrail should be saved as suites in Qase
             suites = self.testrail.get_suites(project['testrail_id'])
+            self.mappings.stats.add_entity_count(project['code'], 'suites', 'testrail', len(suites))
             i = 0
             for suite in suites:
                 self.logger.print_status('['+project['code']+'] Importing suites', i, len(suites), 1)
@@ -57,6 +58,7 @@ class Suites:
             parent_id: Optional[int] = None
         ):
         sections = self._get_sections(testrail_project_id, testrail_suite_id)
+        self.mappings.stats.add_entity_count(qase_code, 'suites', 'testrail', len(sections))
         self.logger.log(f"[{qase_code}][Suites] Found {len(sections)} sections")
 
         i = 1
@@ -89,6 +91,7 @@ class Suites:
         parent_id=self.suites_map[parent_id] if parent_id and self.suites_map[parent_id] else None
 
         self.suites_map[testrail_suite_id] = self.qase.create_suite(qase_code.upper(), title, description, parent_id)
+        self.mappings.stats.add_entity_count(qase_code, 'suites', 'qase')
     
     # Recursively get all sections
     def _get_sections(self, project_id: int, suite_id: int = 0, offset: int = 0, limit: int = 100) -> List:

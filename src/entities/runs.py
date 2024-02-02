@@ -19,7 +19,9 @@ class Runs:
         self.mappings = mappings
         self.project = project
 
-        self.attachments = Attachments(self.qase, self.testrail, self.logger)
+        self.attachments = Attachments(self.qase, self.testrail, self.logger, self.mappings, self.config)
+        
+        self.configurations = self.mappings.configurations[self.project['code']]
 
         self.created_after = self.config.get('runs.created_after')
         self.index = []
@@ -37,36 +39,36 @@ class Runs:
             self._import_run(run)
 
     def _build_index(self) -> None:
-        self.logger.log(f'[{self.project["code"]}][Runs] Building runs index')
-        if self.project['suite_mode'] == 3:
-            for suite_id in self.mappings.suites[self.project['code']]:
-                self._build_runs_index_for_suite(suite_id)
-        else:
-            self._build_runs_index_for_suite(0)
+        self.logger.log(f'[{self.project["code"]}][Runs] Building index for project {self.project["name"]}')
+        self._build_runs_index()
         self._build_plans_index()
+        self.mappings.stats.add_entity_count(self.project['code'], 'runs', 'testrail', len(self.index))
 
-    def _build_runs_index_for_suite(self, suite_id: int) -> None:
-        self.logger.log(f'[{self.project["code"]}][Runs] Building runs index for suite {suite_id}')
+    def _build_runs_index(self) -> None:
+        self.logger.log(f'[{self.project["code"]}][Runs] Building runs index')
         limit = 250
         offset = 0
 
+        data = {
+            'project_id': self.project['testrail_id'],
+            'created_after': self.created_after,
+            'limit': limit,
+        }
+
         while True:
-            runs = self.testrail.get_runs(
-                project_id = self.project['testrail_id'],
-                suite_id = suite_id,
-                created_after = self.created_after,
-                limit = 250,
-                offset = offset
-            )
-            # Process the runs in the current batch
+            data['offset'] = offset
+            runs = self.testrail.get_runs(**data)
+            self.logger.log(f'[{self.project["code"]}][Runs] Found {str(len(runs["runs"]))} runs in TestRail')
             for run in runs['runs']:
                 self.index.append({
                     'id': run['id'],
                     'name': run['name'],
+                    'description': run['description'],
                     'created_on': run['created_on'],
                     'completed_on': run['completed_on'],
                     'is_completed': run['is_completed'],
                     'milestone_id': run['milestone_id'],
+                    'config_ids': run['config_ids'],
                     'author_id': self.mappings.get_user_id(run['created_by']),
                 })
 
@@ -74,6 +76,7 @@ class Runs:
                 break
 
             offset = offset + limit
+        self.logger.log(f'[{self.project["code"]}][Runs] Items in index: {str(len(self.index))}')
 
     def _build_plans_index(self) -> None:
         self.logger.log(f'[{self.project["code"]}][Runs] Building plans index')
@@ -85,16 +88,19 @@ class Runs:
             plans = self.testrail.get_plans(self.project['testrail_id'], limit, offset)
             for plan in plans['plans']:
                 plan = self.testrail.get_plan(plan['id'])
-                if 'entries' in plan and plan['entries'] and len(plan['entries']) > 0:
+                if plan != None and 'entries' in plan and plan['entries'] and len(plan['entries']) > 0:
                     self.logger.log(f'[{self.project["code"]}][Runs] Fetching runs for plan {plan["id"]}')
                     for entry in plan['entries']:
                         for run in entry['runs']:
                             self.index.append({
                                 'id': run['id'],
                                 'name': run['name'],
+                                'plan_name': plan['name'],
+                                'description': run['description'],
                                 'created_on': run['created_on'],
                                 'completed_on': run['completed_on'],
                                 'plan_id': plan['id'],
+                                'config_ids': run['config_ids'],
                                 'is_completed': run['is_completed'],
                                 'milestone_id': run['milestone_id'],
                                 'author_id': self.mappings.get_user_id(run['created_by']),
@@ -103,6 +109,7 @@ class Runs:
                 break
 
             offset = offset + limit
+        self.logger.log(f'[{self.project["code"]}][Runs] Items in index: {str(len(self.index))}')
 
     def _import_run(self, run: list) -> None:
         # Load testrail tests from the run ()
@@ -111,16 +118,26 @@ class Runs:
 
         milestone_id = self.mappings.milestones[self.project['code']][run['milestone_id']] if run['milestone_id'] in self.mappings.milestones[self.project['code']] else None
 
+        if (run['config_ids'] != None and len(run['config_ids']) > 0):
+            run['configurations'] = self._replace_config_ids(run['config_ids'])
+
         # Create a new test run in Qase
         qase_run_id = self.qase.create_run(run, self.project['code'], list(cases_map.values()), milestone_id)
 
-        if (qase_run_id != None):
+        if (qase_run_id):
             self.logger.log(f'[{self.project["code"]}][Runs] Created a new run in Qase: {qase_run_id}')
-
+            self.mappings.stats.add_entity_count(self.project['code'], 'runs', 'qase')
             # Import results for the run
             self._import_results_for_run(run, qase_run_id, cases_map)
         else:
-            self.logger.log(f'[{self.project["code"]}][Runs] Failed to create a new run in Qase for TestRail run {run["name"]} [{run["id"]}]')
+            self.logger.log(f'[{self.project["code"]}][Runs] Failed to create a new run in Qase for TestRail run {run["name"]} [{run["id"]}]', 'error')
+
+    def _replace_config_ids(self, config_ids: list) -> list:
+        configs = []
+        for config_id in config_ids:
+            if config_id in self.configurations:
+                configs.append(self.configurations[config_id])
+        return configs
 
     def _import_results_for_run(self, run: list, qase_run_id: str, cases_map: dict) -> None:
         limit = 250
@@ -128,6 +145,7 @@ class Runs:
         run_results = []
 
         while True:
+            self.logger.log(f'[{self.project["code"]}][Runs] Fetching results for the run {run["name"]} [{run["id"]}]')
             results = self.testrail.get_results(run['id'], limit, offset)
             run_results = run_results + self._clean_results(results['results'])
             offset = offset + limit

@@ -9,8 +9,9 @@ class TestrailService:
                 base_url = config.get('testrail.api.host'),
                 user = config.get('testrail.api.user'),
                 token = config.get('testrail.api.password'),
-                max_retries = 3,
-                backoff_factor = 1
+                logger = logger,
+                max_retries = 5,
+                backoff_factor = 5
             )
         )
 
@@ -29,9 +30,6 @@ class TestrailService:
         else:
             self.logger.log('Using TestRail API repository')
             self.repository = self.api_repository
-
-    def get_all_users(self):
-        return self.repository.get_all_users()
     
     def get_users(self, limit: int = 250, offset: int = 0):
         return self.repository.get_users(limit, offset)
@@ -51,11 +49,17 @@ class TestrailService:
     def get_priorities(self):
         return self.repository.get_priorities()
     
+    def get_configurations(self, project_id: int):
+        return self.repository.get_configurations(project_id)
+    
     def get_case_fields(self):
         return self.repository.get_case_fields()
     
-    def get_projects(self):
-        return self.repository.get_projects()
+    def get_shared_steps(self, project_id: int, limit: int = 250, offset: int = 0):
+        return self.repository.get_shared_steps(project_id, limit, offset)
+    
+    def get_projects(self, limit: int = 250, offset: int = 0):
+        return self.repository.get_projects(limit, offset)
     
     def get_suites(self, project_id):
         return self.repository.get_suites(project_id)
@@ -75,6 +79,12 @@ class TestrailService:
     def get_attachment(self, attachment_id: int):
         return self.api_repository.get_attachment(attachment_id)
     
+    def get_attachments_list(self):
+        return self.api_repository.get_attachments_list()
+    
+    def get_attachments_case(self, case_id: int):
+        return self.repository.get_attachments_case(case_id)
+    
     def get_test(self, test_id: int):
         return self.repository.get_test(test_id)
     
@@ -85,7 +95,11 @@ class TestrailService:
         return self.repository.get_plans(project_id, limit, offset)
     
     def get_plan(self, plan_id: int):
-        return self.repository.get_plan(plan_id)
+        try:
+            return self.repository.get_plan(plan_id)
+        except Exception as e:
+            self.logger.log(f'[TestRail] Failed to get plan {plan_id}: {e}')
+            return None
     
     def get_milestones(self, project_id: int, limit: int = 250, offset: int = 0):
         return self.repository.get_milestones(project_id, limit, offset)

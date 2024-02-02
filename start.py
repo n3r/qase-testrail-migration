@@ -1,4 +1,4 @@
-from src import TestRailImporter
+from src import TestRailImporter, TestRailImporterSync
 from src.support.config_manager import ConfigManager
 from src.support.logger import Logger
 
@@ -8,9 +8,15 @@ try:
 except Exception as e:
     config.build_config()
 
-logger = Logger(config.get('debug'))
+prefix = config.get('prefix')
+if prefix == None:
+    prefix = ''
 
-# Init
-importer = TestRailImporter(config, logger)
+logger = Logger(config.get('debug'), prefix=prefix)
+
+if (config.get('sync')):
+    importer = TestRailImporterSync(config, logger)
+else:
+    importer = TestRailImporter(config, logger)
 
 importer.start()

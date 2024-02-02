@@ -1,3 +1,5 @@
+from .stats import Stats
+
 class Mappings:
     def __init__(self, default_user: int = 1):
         self.suites = {}
@@ -8,7 +10,10 @@ class Mappings:
         self.case_statuses = {}
         self.custom_fields = {}
         self.milestones = {}
+        self.configurations = {}
         self.projects = []
+        self.attachments_map = {}
+        self.shared_steps = {}
 
         # A map of TestRail project ids to Qase project codes
         self.project_map = {}
@@ -44,6 +49,7 @@ class Mappings:
         }
 
         self.default_user = default_user
+        self.stats = Stats()
 
 
     def get_user_id(self, id: int) -> int:

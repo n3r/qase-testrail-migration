@@ -4,3 +4,5 @@ requests
 urllib3
 mysql-connector-python
 psutil
+pandas 
+openpyxl

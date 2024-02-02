@@ -1,5 +1,7 @@
 from ..service import QaseService, TestrailService
-from ..support import Logger, Mappings
+from ..support import Logger, Mappings, ConfigManager as Config
+
+from concurrent.futures import ThreadPoolExecutor
 
 from typing import List
 
@@ -8,47 +10,41 @@ from io import BytesIO
 from urllib.parse import unquote
 
 import re
+import os
+import json
 
 class Attachments:
-    def __init__(self, qase_service: QaseService, testrail_service: TestrailService, logger: Logger) -> Mappings:
+    def __init__(self, qase_service: QaseService, testrail_service: TestrailService, logger: Logger, mappings: Mappings, config: Config) -> Mappings:
         self.qase = qase_service
         self.testrail = testrail_service
         self.logger = logger
-
-        self.map = {}
+        self.config = config
+        self.mappings = mappings
+        self.pattern = r'!\[\]\(index\.php\?/attachments/get/([a-f0-9-]+)\)'
 
     def check_and_replace_attachments(self, string: str, code: str) -> str:
         if string:
             attachments = self.check_attachments(string)
             if (attachments):
-                self.import_attachments(code, attachments)
-                return self.replace_attachments(string=string)
-        return string
+                return self.replace_attachments(string=string, code = code)
+        return str(string)
     
     def check_and_replace_attachments_array(self, attachments: list, code: str) -> list:
         result = []
-        self.import_attachments(code, attachments)
         for attachment in attachments:
-            if attachment in self.map and 'hash' in self.map[attachment]:
-                result.append(self.map[attachment]['hash'])
+            if attachment:
+                attachment = attachment.strip('E_')
+            if attachment and attachment not in self.mappings.attachments_map[code]:
+                self.logger.log(f'[Attachments] Attachment {attachment} not found in attachments_map (array)', 'warning')
+                self.replace_failover(attachment, code)
+            if attachment and attachment in self.mappings.attachments_map[code] and self.mappings.attachments_map[code][attachment] and 'hash' in self.mappings.attachments_map[code][attachment]:
+                result.append(self.mappings.attachments_map[code][attachment]['hash'])
         return result
     
     def check_attachments(self, string: str) -> List:
         if (string):
             return re.findall(r'index\.php\?/attachments/get/([a-f0-9-]+)', str(string))
         return []
-    
-    def import_attachments(self, code: str, testrail_attachments: List) -> None:
-        for attachment in testrail_attachments:
-            try: 
-                self.logger.log(f'[Attachments] Importing attachment: {attachment}')
-                data = self.testrail.get_attachment(attachment)
-                attachment_data = self._get_attachment_meta(data)
-            except Exception as e:
-                self.logger.log(f'[Attachments] Exception when calling TestRail->get_attachment: {e}')
-                continue
-            self.map[attachment] = self.qase.upload_attachment(code, attachment_data)
-        return
     
     def _get_attachment_meta(self, data: dict) -> dict:
         content = BytesIO(data.content)
@@ -61,14 +57,106 @@ class Attachments:
 
         return content
 
-
-    def replace_attachments(self, string: str) -> str:
+    def replace_attachments(self, string: str, code: str) -> str:
+        string = string.strip('E_')
         try:
-            string = re.sub(
-                r'!\[\]\(index\.php\?/attachments/get/([a-f0-9-]+)\)',
-                lambda match: f'![{self.map[match.group(1)]["filename"]}]({self.map[match.group(1)]["url"]})',
-                string
-            )
+            match = re.search(self.pattern, string)
+            if match:
+                attachment_id = match.group(1)
+                if attachment_id not in self.mappings.attachments_map[code]:
+                    self.logger.log(f'[Attachments] Attachment {attachment_id} not found in attachments_map', 'warning')
+                    self.replace_failover(attachment_id, code)
+                return self.replace_string(string, code, attachment_id)
+            else:
+                self.logger.log(f'[Attachments] No attachments found in a string {string}', 'warning')
         except Exception as e:
-            self.logger.log(f'[Attachments] Exception when replacing attachments: {e}')
+            self.logger.log(f'[Attachments] Exception when replacing attachments in a string {string}: {e}', 'error')
         return string
+    
+    def replace_failover(self, attachment_id, code: str):
+        try:
+            self.logger.log(f'[Attachments] Replacing attachment {attachment_id} in failover')
+            attachment_data = self._get_attachment_meta(self.testrail.get_attachment(attachment_id))
+            qase_attachment = self.qase.upload_attachment(code, attachment_data)
+            if qase_attachment:
+                self.mappings.attachments_map[code][attachment_id] = qase_attachment
+                self.logger.log(f'[Attachments] Attachment {attachment_id} replaced in failover')
+            else:
+                self.logger.log(f'[Attachments] Attachment {attachment_id} not replaced in failover', 'error')
+        except Exception as e:
+            self.logger.log(f'[Attachments] Exception when calling Qase->upload_attachment in failover: {e}', 'error')
+    
+    def replace_string(self, string, code, attachment_id):
+        return re.sub(
+            self.pattern,
+            f'![{self.mappings.attachments_map[code][attachment_id]["filename"]}]({self.mappings.attachments_map[code][attachment_id]["url"]})',
+            string
+        )
+
+    def import_all_attachments(self):
+        self.logger.log('[Attachments] Importing all attachments')
+        attachments_raw = self.testrail.get_attachments_list()
+        self.mappings.stats.add_attachment('testrail', len(attachments_raw))
+
+        if (self.config.get('cache')):
+            self._save_cache(attachments_raw)
+
+        with ThreadPoolExecutor(max_workers=7) as executor:
+            futures = []
+            for attachment in attachments_raw:
+                # Submit each project import to the thread pool
+                future = executor.submit(self.import_raw_attachment, attachment)
+                futures.append(future)
+
+            # Wait for all futures to complete
+            for future in futures:
+                # This will also re-raise any exceptions caught during execution of the callable
+                future.result()
+        self.logger.log(f'[Attachments] Imported {len(attachments_raw)} attachments')
+
+        return self.mappings
+
+    def import_raw_attachment(self, attachment):
+        self.logger.log(f'[Attachments] Importing attachment: {attachment["id"]}')
+        if len(attachment['project_id']) > 1:
+            self.logger.log(f'[Attachments] Attachment {attachment["id"]} is linked to multiple projects', 'warning')
+        if len(attachment['project_id']) > 0:
+            if attachment['project_id'][0] in self.mappings.project_map:
+                code = self.mappings.project_map[attachment['project_id'][0]]
+                try: 
+                    meta = self._get_attachment_meta(self.testrail.get_attachment(attachment['id']))
+                except Exception as e:
+                    self.logger.log(f'[Attachments] Exception when calling TestRail->get_attachment: {e}', 'error')
+                try:
+                    if code not in self.mappings.attachments_map:
+                        self.mappings.attachments_map[code] = {}
+                    qase_attachment = self.qase.upload_attachment(code, meta)
+                    if qase_attachment:
+                        self.mappings.attachments_map[code][attachment['id']] = qase_attachment
+                        self.logger.log(f'[Attachments] Attachment {attachment["id"]} imported')
+                        self.mappings.stats.add_attachment('qase')
+                    else:
+                        self.logger.log(f'[Attachments] Attachment {attachment["id"]} not imported', 'error')
+                except Exception as e:
+                    self.logger.log(f'[Attachments] Exception when calling Qase->upload_attachment: {e}', 'error')
+            else:
+                self.logger.log(f'[Attachments] Attachment {attachment["id"]} is not linked to any project', 'error')
+        else:
+            self.logger.log(f'[Attachments] Attachment {attachment["id"]} is not linked to any project', 'warning')
+
+    def _read_cache(self):
+        return
+
+    def _save_cache(self, attachments):
+        self.logger.log('[Attachments] Saving attachments cache')
+        prefix = ''
+        if (self.config.get('prefix')):
+            prefix = self.config.get('prefix')
+        filename = f'{prefix}_attachments.json'
+        log_dir = './cache'
+        if not os.path.exists(log_dir):
+            os.makedirs(log_dir)
+        cache_file = os.path.join(log_dir, f'{filename}')
+        with open(cache_file, 'w') as f:
+            f.write(json.dumps(attachments))
+        self.logger.log('[Attachments] Attachments cache saved')

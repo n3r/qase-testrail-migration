@@ -1,24 +1,24 @@
 import datetime
-import os, psutil
+
+import os
 
 class Logger:
-    def __init__(self, debug: bool = False):
+    def __init__(self, debug: bool = False, prefix: str = ''):
         now = datetime.datetime.now()
         timestamp = now.strftime("%Y%m%d_%H%M%S")
+        filename = f'{prefix}_{timestamp}.log'
         log_dir = './logs'
         if not os.path.exists(log_dir):
             os.makedirs(log_dir)
-        self.log_file = os.path.join(log_dir, f'{timestamp}.log')
+        self.log_file = os.path.join(log_dir, f'{filename}')
         self.debug = debug
-        self.process = psutil.Process()
         with open(self.log_file, 'w'):
             pass
 
-    def log(self, message: str):
+    def log(self, message: str, level: str = 'info'):
         now = datetime.datetime.now()
         time_str = now.strftime("%H:%M:%S")
-        memory = str(round(psutil.Process(os.getpid()).memory_info().rss / 1024 ** 2, 2))
-        log = f"[{time_str}][{memory}MB] {message}\n"
+        log = f"[{time_str}][{level}] {message}\n"
         if self.debug:
             print(log)
         with open(self.log_file, 'a') as f:

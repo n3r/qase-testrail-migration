@@ -16,7 +16,7 @@ class Cases:
         self.config = config
         self.logger = logger
         self.mappings = mappings
-        self.attachments = Attachments(self.qase, self.testrail, self.logger)
+        self.attachments = Attachments(self.qase, self.testrail, self.logger, self.mappings, self.config)
         self.total = 0
         self.logger.divider()
 
@@ -44,17 +44,20 @@ class Cases:
             if suite_id == None:
                 suite_id = 0
             cases = self.testrail.get_cases(self.project['testrail_id'], suite_id, limit, offset)
+            self.mappings.stats.add_entity_count(self.project['code'], 'cases', 'testrail', cases['size'])
             if cases:
                 self.logger.print_status('['+self.project['code']+'] Importing test cases', self.total, self.total+cases['size'], 1)
-                self.logger.log(f'[{self.project["code"]}][Tests] Importing cases from {offset} to {offset + limit} for suite {suite_id}')
+                self.logger.log(f'[{self.project["code"]}][Tests] Importing {cases["size"]} cases from {offset} to {offset + limit} for suite {suite_id}')
                 data = self._prepare_cases(cases)
                 if data:
-                    self.qase.create_cases(self.project['code'], data)
+                    status = self.qase.create_cases(self.project['code'], data)
+                    if status:
+                        self.mappings.stats.add_entity_count(self.project['code'], 'cases', 'qase', cases['size'])
                 self.total = self.total + cases['size']
                 self.logger.print_status('['+self.project['code']+'] Importing test cases', self.total, self.total, 1)
             return cases['size']
         except Exception as e:
-            self.logger.log(f"[{self.project['code']}][Tests] Error processing cases for suite {suite_id}: {e}")
+            self.logger.log(f"[{self.project['code']}][Tests] Error processing cases for suite {suite_id}: {e}", 'error')
             return 0
     
     def _prepare_cases(self, cases: List) -> List:
@@ -67,12 +70,14 @@ class Cases:
                 'updated_at': str(datetime.fromtimestamp(case['updated_on'])),
                 'author_id': self.mappings.get_user_id(case['created_by']),
                 'steps': [],
+                'attachments': [],
                 'is_flaky': 0,
                 'custom_field': {},
             }
 
             # import custom fields
             data = self._import_custom_fields_for_case(case=case, data=data)
+            data = self._get_attachments_for_case(case=case, data=data)
 
             data = self._set_priority(case=case, data=data)
             data = self._set_type(case=case, data=data)
@@ -101,6 +106,25 @@ class Cases:
                 data['custom_field'][str(self.mappings.refs_id)] = quote(string, safe="/:")
         return data
     
+    def _get_attachments_for_case(self, case: dict, data: dict) -> dict:
+        self.logger.log(f'[{self.project["code"]}][Tests] Getting attachments for case {case["title"]}')
+        try:
+            attachments = self.testrail.get_attachments_case(case['id'])
+        except Exception as e:
+            self.logger.log(f'[{self.project["code"]}][Tests] Failed to get attachments for case {case["title"]}: {e}', 'error')
+            return data
+        self.logger.log(f'[{self.project["code"]}][Tests] Found {len(attachments["attachments"])} attachments for case {case["title"]}')
+        for attachment in attachments['attachments']:
+            try:
+                id = attachment['id']
+                if 'data_id' in attachment:
+                    id = attachment['data_id']
+                if id in self.mappings.attachments_map[self.project['code']]:
+                    data['attachments'].append(self.mappings.attachments_map[self.project['code']][id]['hash'])
+            except Exception as e:
+                self.logger.log(f'[{self.project["code"]}][Tests] Failed to get attachment for case {case["title"]}: {e}', 'error')
+        return data
+    
     # Done
     def _import_custom_fields_for_case(self, case: dict, data: dict) -> dict:
         for field_name in case:
@@ -124,49 +148,56 @@ class Cases:
                 i = 1
                 for step in case[field_name]:
                     action = self.attachments.check_and_replace_attachments(step['content'], self.project['code'])
-                    if (action and action != ''):
-                        # Type casting for API validation
-                        if step['expected'] == None:
-                            step['expected'] = ''
+                    expected = self.attachments.check_and_replace_attachments(step['expected'], self.project['code'])
+
+                    action = action.strip()
+                    expected = expected.strip()
+
+                    if (action != '' or (action == '' and expected != '')):
+                        if action == '' or action == ' ':
+                            action = 'No action'
                         steps.append(
                             TestStepCreate(
                                 action=action,
-                                expected_result=self.attachments.check_and_replace_attachments(step['expected'], self.project['code']),
+                                expected_result=expected,
                                 position=i
                             )
                         )
                         i += 1
                     else:
-                        self.logger.log(f'[{self.project["code"]}][Tests] Case {case["title"]} has invalid step {step}')
+                        self.logger.log(f'[{self.project["code"]}][Tests] Case {case["title"]} has invalid step {step}', 'warning')
                 data['steps'] = steps
         return data
     
     # Done. Method validates if custom field value exists (skip)
     def _validate_custom_field_values(self, custom_field: dict, value: Union[str, List]) -> Optional[Union[str, list]]: 
-        values = self.__split_values(custom_field['configs'][0]['options']['items'])
-        if type(value) == str or type(value) == int:
-            if str(value) not in values.keys():
-                self.logger.log(f'[{self.project["code"]}][Tests] Custom field {custom_field["name"]} has invalid value {value}')
-                return None
-        elif type(value) == list:
-            filtered_values = []
-            for item in value:
-                if str(item) in values.keys():
-                    filtered_values.append(item)
+        if len(custom_field['configs']) > 0 and 'options' in custom_field['configs'][0] and 'items' in custom_field['configs'][0]['options'] and len(custom_field['configs'][0]['options']['items']) > 0:
+            values = self.__split_values(custom_field['configs'][0]['options']['items'])
+            if type(value) == str or type(value) == int:
+                if str(value) not in values.keys():
+                    self.logger.log(f'[{self.project["code"]}][Tests] Custom field {custom_field["name"]} has invalid value {value}', 'warning')
+                    return None
+            elif type(value) == list:
+                filtered_values = []
+                for item in value:
+                    if str(item) in values.keys():
+                        filtered_values.append(item)
+                    else:
+                        self.logger.log(f'[{self.project["code"]}][Tests] Custom field {custom_field["name"]} has invalid value {value}', 'warning')
+                if len(filtered_values) == 0:
+                    return None
                 else:
-                    self.logger.log(f'[{self.project["code"]}][Tests] Custom field {custom_field["name"]} has invalid value {value}')
-            if len(filtered_values) == 0:
-                return None
-            else:
-                return filtered_values
-        return value
+                    return filtered_values
+            return value
+        return None
     
     def __split_values(self, string: str, delimiter: str = ',') -> dict:
         items = string.split('\n')  # split items into a list
         result = {}
         for item in items:
-            key, value = item.split(delimiter)  # split each item into a key and a value
-            result[key] = value
+            if item != '' and item != None:
+                key, value = item.split(delimiter)
+                result[key] = value
         return result
     
     # Done

@@ -28,8 +28,11 @@ class TestrailApiRepository:
     def get_case_fields(self):
         return self.client.get('get_case_fields')
     
-    def get_projects(self):
-        return self.client.get('get_projects')
+    def get_configurations(self, project_id: int):
+        return self.client.get('get_configs/' + str(project_id))
+    
+    def get_projects(self, limit = 250, offset = 0):
+        return self.client.get('get_projects/' + f'&limit={limit}&offset={offset}')
     
     def get_suites(self, project_id, offset = 0, limit = 100):
         suites = self.client.get('get_suites/' + str(project_id) + f'&limit={limit}')
@@ -42,6 +45,9 @@ class TestrailApiRepository:
         if (suite_id > 0):
             uri += f'&suite_id={suite_id}'
         return self.client.get(uri)
+    
+    def get_shared_steps(self, project_id: int, limit: int = 250, offset: int = 0):
+        return self.client.get('get_shared_steps/' + str(project_id) + f'&limit={limit}&offset={offset}')
     
     def get_cases(self, project_id: int, suite_id: int = 0, limit: int = 250, offset: int = 0) -> dict:
         uri = 'get_cases/' + str(project_id) + f'&limit={limit}&offset={offset}'
@@ -62,6 +68,12 @@ class TestrailApiRepository:
     
     def get_attachment(self, attachment):
         return self.client.get_attachment(attachment)
+    
+    def get_attachments_list(self):
+        return self.client.get_attachments_list()
+    
+    def get_attachments_case(self, case_id: int):
+        return self.client.get('get_attachments_for_case/' + str(case_id))
     
     def get_test(self, test_id: int):
         return self.client.get('get_test/' + str(test_id))

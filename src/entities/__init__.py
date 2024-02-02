@@ -6,6 +6,8 @@ from .cases import Cases
 from .runs import Runs
 from .milestones import Milestones
 from .attachments import Attachments
+from .configurations import Configurations
+from .shared import SharedSteps
 
 __all__ = [
     "Users",
@@ -16,4 +18,6 @@ __all__ = [
     "Runs",
     "Milestones",
     "Attachments",
+    "Configurations",
+    "SharedSteps"
 ]

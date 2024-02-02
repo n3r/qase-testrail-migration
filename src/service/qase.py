@@ -15,8 +15,10 @@ from qaseio.api.runs_api import RunsApi
 from qaseio.api.results_api import ResultsApi
 from qaseio.api.attachments_api import AttachmentsApi
 from qaseio.api.milestones_api import MilestonesApi
+from qaseio.api.configurations_api import ConfigurationsApi
+from qaseio.api.shared_steps_api import SharedStepsApi
 
-from qaseio.models import TestCasebulk, SuiteCreate, MilestoneCreate, CustomFieldCreate, CustomFieldCreateValueInner, ProjectCreate, RunCreate, ResultcreateBulk
+from qaseio.models import TestCasebulk, SuiteCreate, MilestoneCreate, CustomFieldCreate, CustomFieldCreateValueInner, ProjectCreate, RunCreate, ResultcreateBulk, ConfigurationCreate, ConfigurationGroupCreate, SharedStepCreate, SharedStepContentCreate
 
 from datetime import datetime
 
@@ -32,9 +34,13 @@ class QaseService:
         if (config.get('qase.ssl') == None or config.get('qase.ssl') == True):
             ssl = 'https://'
 
+        delimiter = '.'
+        if (config.get('qase.enterprise') != None and config.get('qase.enterprise') == True):
+            delimiter = '-'
+
         configuration = Configuration()
         configuration.api_key['TokenAuth'] = config.get('qase.api_token')
-        configuration.host = f'{ssl}api-{config.get("qase.host")}/v1'
+        configuration.host = f'{ssl}api{delimiter}{config.get("qase.host")}/v1'
         configuration.ssl_ca_cert = certifi.where()
 
         self.client = ApiClient(configuration)
@@ -87,6 +93,40 @@ class QaseService:
             self.logger.log('Exception when calling CustomFieldsApi->create_custom_field: %s\n' % e)
         return 0
     
+    def create_configuration_group(self, project_code, title):
+        try:
+            api_instance = ConfigurationsApi(self.client)
+            # Create a custom field.
+            api_response = api_instance.create_configuration_group(
+                code=project_code, 
+                configuration_group_create=ConfigurationGroupCreate(title=title)
+            )
+            if (api_response.status == False):
+                self.logger.log('Error creating configuration group: ' + title)
+            else:
+                self.logger.log('Configuration group created: ' + title)
+                return api_response.result.id
+        except ApiException as e:
+            self.logger.log('Exception when calling CustomFieldsApi->create_configuration_group: %s\n' % e)
+        return 0
+    
+    def create_configuration(self, project_code, title, group_id):
+        try:
+            api_instance = ConfigurationsApi(self.client)
+            # Create a custom field.
+            api_response = api_instance.create_configuration(
+                code=project_code, 
+                configuration_create = ConfigurationCreate(title=title, group_id=group_id)
+            )
+            if (api_response.status == False):
+                self.logger.log('Error creating configuration: ' + title)
+            else:
+                self.logger.log('Configuration created: ' + title)
+                return api_response.result.id
+        except ApiException as e:
+            self.logger.log('Exception when calling CustomFieldsApi->create_configuration: %s\n' % e)
+        return 0
+    
     def get_system_fields(self):
         try:
             api_instance = SystemFieldsApi(self.client)
@@ -121,16 +161,19 @@ class QaseService:
         if (self.__get_default_value(field)):
             data['default_value'] = self.__get_default_value(field)
         if (field['type_id'] == 12 or field['type_id'] == 6):
-            values = self.__split_values(field['configs'][0]['options']['items'])
-            field['qase_values'] = {}
-            for key, value in values.items():
-                data['value'].append(
-                    CustomFieldCreateValueInner(
-                        id=int(key)+1, # hack as in testrail ids can start from 0
-                        title=value,
-                    ),
-                )
-                field['qase_values'][int(key)+1] = value
+            if len(field['configs']) > 0:
+                values = self.__split_values(field['configs'][0]['options']['items'])
+                field['qase_values'] = {}
+                for key, value in values.items():
+                    data['value'].append(
+                        CustomFieldCreateValueInner(
+                            id=int(key)+1, # hack as in testrail ids can start from 0
+                            title=value,
+                        ),
+                    )
+                    field['qase_values'][int(key)+1] = value
+            else:
+                self.logger.log('Error creating custom field: ' + field['label'] + '. No options found', 'warning')
         return data
     
     def __get_default_value(self, field):
@@ -145,15 +188,17 @@ class QaseService:
         items = string.split('\n')  # split items into a list
         result = {}
         for item in items:
+            if item == '':
+                continue
             key, value = item.split(delimiter)  # split each item into a key and a value
             result[key] = value
         return result
     
-    def get_projects(self):
+    def get_projects(self, limit = 100, offset = 0):
         try:
             api_instance = ProjectsApi(self.client)
             # Get all projects.
-            api_response = api_instance.get_projects(100, 0)
+            api_response = api_instance.get_projects(limit, offset)
             if (api_response.status and api_response.result):
                 return api_response.result
         except ApiException as e:
@@ -216,10 +261,20 @@ class QaseService:
         api_instance = RunsApi(self.client)
 
         data = {
-            'title': run['name'],
             'start_time': datetime.fromtimestamp(run['created_on']).strftime('%Y-%m-%d %H:%M:%S'),
             'author_id': run['author_id']
         }
+
+        if (run['description']):
+            data['description'] = run['description']
+
+        if ('plan_name' in run and run['plan_name']):
+            data['title'] = '['+run['plan_name']+'] '+run['name']
+        else:
+            data['title'] = run['name']
+
+        if ('configurations' in run and run['configurations'] and len(run['configurations']) > 0):
+            data['configurations'] = run['configurations']
 
         if (run['is_completed']):
             data['end_time'] = datetime.fromtimestamp(run['completed_on']).strftime('%Y-%m-%d %H:%M:%S')
@@ -297,17 +352,20 @@ class QaseService:
                 
     def convert_to_seconds(self, time_str: str) -> int:
         total_seconds = 0
-        components = time_str.split()
 
-        for component in components:
-            if component.endswith('d'):
-                total_seconds += int(component[:-1]) * 86400  # 60 seconds * 60 minutes * 24 hours
-            elif component.endswith('h'):
-                total_seconds += int(component[:-1]) * 3600  # 60 seconds * 60 minutes
-            elif component.endswith('m'):
-                total_seconds += int(component[:-1]) * 60
-            elif component.endswith('s'):
-                total_seconds += int(component[:-1])
+        try:
+            components = time_str.split()
+            for component in components:
+                if component.endswith('d'):
+                    total_seconds += int(component[:-1]) * 86400  # 60 seconds * 60 minutes * 24 hours
+                elif component.endswith('h'):
+                    total_seconds += int(component[:-1]) * 3600  # 60 seconds * 60 minutes
+                elif component.endswith('m'):
+                    total_seconds += int(component[:-1]) * 60
+                elif component.endswith('s'):
+                    total_seconds += int(component[:-1])
+        except Exception as e:
+            self.logger.log(f'Exception when converting time string: {e}', 'warning')
 
         return total_seconds
     
@@ -321,8 +379,8 @@ class QaseService:
             if response.status:
                 return response.result[0].to_dict()
         except Exception as e:
-            raise e
             self.logger.log(f'Exception when calling AttachmentsApi->upload_attachment: {e}')
+        return None
 
     def create_milestone(self, project_code, title, description, status, due_date):
         data = {
@@ -342,3 +400,21 @@ class QaseService:
             milestone_create=MilestoneCreate(**data)
         )
         return api_response.result.id
+    
+    def create_shared_step(self, project_code, title, steps):
+        inner_steps = []
+
+        for step in steps:
+            action = step['content'].strip()
+            if (action == ''):
+                action = 'No action'
+            inner_steps.append(
+                SharedStepContentCreate(
+                    action = action,
+                    expected_result = step['expected']
+                )
+            )
+                
+        api_instance = SharedStepsApi(self.client)
+        api_response = api_instance.create_shared_step(project_code, SharedStepCreate(title=title, steps=inner_steps))
+        return api_response.result.hash

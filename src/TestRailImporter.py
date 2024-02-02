@@ -1,6 +1,7 @@
 from .support import ConfigManager, Logger, Mappings
 from .service import QaseService, TestrailService, QaseScimService
-from .entities import Users, Fields, Projects, Suites, Cases, Runs, Milestones
+from .entities import Users, Fields, Projects, Suites, Cases, Runs, Milestones, Configurations, Attachments, SharedSteps
+from concurrent.futures import ThreadPoolExecutor
 
 class TestRailImporter:
     def __init__(self, config: ConfigManager, logger: Logger) -> None:
@@ -37,8 +38,17 @@ class TestRailImporter:
             self.mappings,
             self.config
         ).import_projects()
-        
-        # Step 3. Import custom fields
+
+        # Step 3. Import attachments
+        self.mappings = Attachments(
+            self.qase_service, 
+            self.testrail_service, 
+            self.logger, 
+            self.mappings,
+            self.config
+        ).import_all_attachments()
+
+        # Step 4. Import custom fields
         self.mappings = Fields(
             self.qase_service, 
             self.testrail_service, 
@@ -47,43 +57,71 @@ class TestRailImporter:
             self.config,
         ).import_fields()
 
-        # Step 4. Import projects data
-        for project in self.mappings.projects:
-            self.logger.print_group(f'Importing project: {project["name"]}' 
-                                    + (' (' 
-                                    + project['suite_title'] 
-                                    + ')' if 'suite_title' in project else ''))
-            
-            self.mappings = Milestones(
-                self.qase_service, 
-                self.testrail_service, 
-                self.logger, 
-                self.mappings,
-            ).import_milestones(project)
+        # Step 5. Import projects data in parallel
+        with ThreadPoolExecutor(max_workers=8) as executor:
+            futures = []
+            for project in self.mappings.projects:
+                # Submit each project import to the thread pool
+                future = executor.submit(self.import_project_data, project)
+                futures.append(future)
 
-            self.mappings = Suites(
-                self.qase_service, 
-                self.testrail_service, 
-                self.logger, 
-                self.mappings, 
-                self.config
-            ).import_suites(project)
+            # Wait for all futures to complete
+            for future in futures:
+                # This will also re-raise any exceptions caught during execution of the callable
+                future.result()
 
-            Cases(
-                self.qase_service, 
-                self.testrail_service, 
-                self.logger, 
-                self.mappings, 
-                self.config
-            ).import_cases(project)
+        self.mappings.stats.print()
+        self.mappings.stats.save(str(self.config.get('prefix')))
+        self.mappings.stats.save_xlsx(str(self.config.get('prefix')))
 
-            Runs(
-                self.qase_service, 
-                self.testrail_service, 
-                self.logger, 
-                self.mappings, 
-                self.config,
-                project
-            ).import_runs()
+    def import_project_data(self, project):
+        self.logger.print_group(f'Importing project: {project["name"]}' 
+                                + (' (' 
+                                + project['suite_title'] 
+                                + ')' if 'suite_title' in project else ''))
 
-        exit()
+        self.mappings = Configurations(
+            self.qase_service, 
+            self.testrail_service, 
+            self.logger, 
+            self.mappings,
+        ).import_configurations(project)
+
+        self.mappings = SharedSteps(
+            self.qase_service, 
+            self.testrail_service, 
+            self.logger, 
+            self.mappings,
+        ).import_shared_steps(project)
+
+        self.mappings = Milestones(
+            self.qase_service, 
+            self.testrail_service, 
+            self.logger, 
+            self.mappings,
+        ).import_milestones(project)
+
+        self.mappings = Suites(
+            self.qase_service, 
+            self.testrail_service, 
+            self.logger, 
+            self.mappings, 
+            self.config
+        ).import_suites(project)
+
+        Cases(
+            self.qase_service, 
+            self.testrail_service, 
+            self.logger, 
+            self.mappings, 
+            self.config
+        ).import_cases(project)
+
+        Runs(
+            self.qase_service, 
+            self.testrail_service, 
+            self.logger, 
+            self.mappings, 
+            self.config,
+            project
+        ).import_runs()

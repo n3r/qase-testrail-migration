@@ -1,8 +1,5 @@
 from ..support import ConfigManager, Logger
 
-import certifi
-import json
-
 from ..api import QaseScimClient
 
 from qaseio.exceptions import ApiException

@@ -17,14 +17,14 @@ class Projects:
     def import_projects(self):
         self.logger.log('Importing projects from TestRail')
 
-        testrail_projects = self.testrail.get_projects()
+        testrail_projects = self._get_all_projects()
         if testrail_projects:
-            total = len(testrail_projects['projects'])
+            total = len(testrail_projects)
             self.logger.log(f'Found {str(total)} projects')
             i = 0
             self.logger.print_status('Importing projects', i, total)
 
-            for project in testrail_projects['projects']:
+            for project in testrail_projects:
                 self.logger.log(f'Importing project: {project["name"]}. Is Completed: {project["is_completed"]}')
                 if (self._check_import(project['name'], project['is_completed'])):
                     data = {
@@ -37,8 +37,10 @@ class Projects:
                         data['code'] = code
                         self.mappings.projects.append(data)
                         self.mappings.project_map[project['id']] = data['code']
+                        self.mappings.attachments_map[code] = {}
+                        self.mappings.stats.add_project(code, project['name'])
                     else:
-                        self.logger.log(f'Failed to create project: {project["name"]}')
+                        self.logger.log(f'Failed to create project: {project["name"]}', 'error')
                 else:
                     self.logger.log(f'Skipping project: {project["name"]}')
                 i += 1
@@ -46,6 +48,20 @@ class Projects:
         else:
             self.logger.log('No projects found in TestRail')
         return self.mappings
+    
+    def _get_all_projects(self):
+        offset = 0
+        limit = 250
+        projects = []
+        while True:
+            result = self.testrail.get_projects(limit, offset)
+            projects = projects + result['projects']
+            if result['size'] < limit:
+                break
+            offset += limit
+        
+        return projects
+
     
     # Function checks if the project should be imported
     def _check_import(self, title: str, is_completed: bool) -> bool:
@@ -69,18 +85,7 @@ class Projects:
         # In all other cases, import the project
         return True
     
-    # Method generates short code that will be used as a project code in from a string
-    def _old_short_code(self, s: str) -> str:
-        s = re.sub('[!@#$%^&*().,1234567890]', '', s)  # remove special characters
-        words = s.split()
-
-        if len(words) > 1:  # if the string contains multiple words
-            code = ''.join(word[0] for word in words).upper()
-        else:
-            code = s.upper()
-
-        return code[:10]  # truncate to 10 characters
-    
+    # Method generates short code that will be used as a project code in from a string    
     def _short_code(self, s: str) -> str:
         s = s.replace("-", " ")  # Replace dashes with spaces
 
@@ -93,6 +98,8 @@ class Projects:
             code = ''.join(word[0] for word in words).upper()
         else:
             code = s.upper()
+
+        code = code.replace(" ", "")
 
         # Truncate to 10 characters
         code = code[:10]

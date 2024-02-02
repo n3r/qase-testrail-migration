@@ -33,11 +33,14 @@ class Users:
 
         self.build_map()
 
+
         return self.mappings
     
     def build_map(self):
         self.logger.log("[Users] Building users map")
         qase_users = self.qase.get_all_users()
+        self.mappings.stats.add_user('qase', len(qase_users))
+        self.mappings.stats.add_user('testrail', len(self.testrail_users))
         i = 0
         total = len(self.testrail_users)
         self.logger.print_status('Building users map', i, total)
@@ -58,8 +61,8 @@ class Users:
             self.logger.print_status('Building users map', i, total)
     
     def create_root_group(self):
-        if (self.config.get('group.name') != None):
-            group_name = self.config.get('group.name')
+        if (self.config.get('groups.name') != None):
+            group_name = self.config.get('groups.name')
         else:
             group_name = 'TestRail Migration'
         self.logger.log(f"[Users] Creating group {group_name}")
@@ -92,7 +95,7 @@ class Users:
                         if (testrail_user['is_active']):
                             self.active_ids.append(user_id)
                 except Exception as e:
-                    self.logger.log(f"[Users] Failed to create user {testrail_user['email']}")
+                    self.logger.log(f"[Users] Failed to create user {testrail_user['email']}", 'error')
                     self.logger.log(e)
                     continue
 
