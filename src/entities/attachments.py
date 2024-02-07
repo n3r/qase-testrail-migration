@@ -93,7 +93,7 @@ class Attachments:
             string
         )
 
-    def import_all_attachments(self):
+    def import_all_attachments(self) -> Mappings:
         self.logger.log('[Attachments] Importing all attachments')
         attachments_raw = self.testrail.get_attachments_list()
         self.mappings.stats.add_attachment('testrail', len(attachments_raw))

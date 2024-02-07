@@ -84,6 +84,7 @@ class Cases:
             data = self._set_status(case=case, data=data)
             data = self._set_suite(case=case, data=data)
             data = self._set_refs(case=case, data=data)
+            data = self._set_milestone(case=case, data=data, code=self.project['code'])
 
             result.append(
                 TestCasebulkCasesInner(
@@ -228,3 +229,8 @@ class Cases:
         if (section_id and section_id in self.mappings.suites[self.project['code']]):
             return self.mappings.suites[self.project['code']][section_id]
         return None
+    
+    def _set_milestone(self, case: dict, data: dict, code: str) -> dict:
+        if case['milestone_id'] and code in self.mappings.milestones and case['milestone_id'] in self.mappings.milestones[code]:
+            data['milestone_id'] = self.mappings.milestones[code][case['milestone_id']]
+        return data
