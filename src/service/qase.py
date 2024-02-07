@@ -23,7 +23,6 @@ from qaseio.models import TestCasebulk, SuiteCreate, MilestoneCreate, CustomFiel
 from datetime import datetime
 
 from qaseio.exceptions import ApiException
-from ..exceptions import ImportException
 
 class QaseService:
     def __init__(self, config: ConfigManager, logger: Logger):
@@ -154,9 +153,10 @@ class QaseService:
             data['is_enabled_for_all_projects'] = False
             if (field['configs'][0]['context']['project_ids']):
                 data['projects_codes'] = []
-                for id in field['configs'][0]['context']['project_ids']:
-                    if id in mappings.project_map:
-                        data['projects_codes'].append(mappings.project_map[id])
+                for config in field['configs']:
+                    for id in config['context']['project_ids']:
+                        if id in mappings.project_map:
+                            data['projects_codes'].append(mappings.project_map[id])
 
         if (self.__get_default_value(field)):
             data['default_value'] = self.__get_default_value(field)
@@ -211,6 +211,11 @@ class QaseService:
             'title': title,
             'code': code,
             'description': description if description else "",
+            'settings': {
+                'runs': {
+                    'auto_complete': False,
+                }
+            }
         }
 
         if group_id != None:

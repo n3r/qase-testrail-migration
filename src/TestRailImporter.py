@@ -22,9 +22,9 @@ class TestRailImporter:
     def start(self):
         # Step 1. Build users map
         self.mappings = Users(
-            self.qase_service, 
-            self.testrail_service, 
-            self.logger, 
+            self.qase_service,
+            self.testrail_service,
+            self.logger,
             self.mappings,
             self.config,
             self.qase_scim_service,

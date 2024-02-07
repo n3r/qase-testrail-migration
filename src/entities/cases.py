@@ -32,7 +32,7 @@ class Cases:
 
     def import_cases_for_suite(self, suite_id):
         offset = 0
-        limit = 250
+        limit = 100
         while True:
             count = self.process_cases(suite_id, offset, limit)
             if count < limit:
@@ -59,7 +59,7 @@ class Cases:
         except Exception as e:
             self.logger.log(f"[{self.project['code']}][Tests] Error processing cases for suite {suite_id}: {e}", 'error')
             return 0
-    
+
     def _prepare_cases(self, cases: List) -> List:
         result = []
         for case in cases['cases']:
