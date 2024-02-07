@@ -183,7 +183,7 @@ class Runs:
                 clean_results.append(result)
 
         return clean_results
-    
+
     def _merge_comments(self, results: list) -> list:
         comments = {}
         cleaned = []
@@ -223,7 +223,7 @@ class Runs:
             qase_run_id,
             self.project['code'],
             self.mappings,
-            cases_map
+            cases_map,
         )
     
     def _merge_comments_with_same_test_id(self, test_results):
