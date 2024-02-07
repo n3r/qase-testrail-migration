@@ -183,7 +183,7 @@ class Runs:
                 clean_results.append(result)
 
         return clean_results
-    
+
     def _merge_comments(self, results: list) -> list:
         comments = {}
         cleaned = []
@@ -199,7 +199,7 @@ class Runs:
             if result['test_id'] in comments and len(comments[result['test_id']]) > 0:
                 for comment in comments[result['test_id']]:
                     comment_date = datetime.fromtimestamp(result['created_on'])
-                    additional_comment = f"\n On {comment_date} a comment was added: \n {str(comment['comment'])}"
+                    additional_comment = f"\n On {comment_date} a comment was added: \n {str(comment['comment'] if comment['comment'] else '')}"
                     if (result['comment'] == None):
                         result['comment'] = additional_comment
                     else:
@@ -223,7 +223,7 @@ class Runs:
             qase_run_id,
             self.project['code'],
             self.mappings,
-            cases_map
+            cases_map,
         )
     
     def _merge_comments_with_same_test_id(self, test_results):

@@ -23,7 +23,6 @@ from qaseio.models import TestCasebulk, SuiteCreate, MilestoneCreate, CustomFiel
 from datetime import datetime
 
 from qaseio.exceptions import ApiException
-from ..exceptions import ImportException
 
 class QaseService:
     def __init__(self, config: ConfigManager, logger: Logger):
@@ -154,9 +153,10 @@ class QaseService:
             data['is_enabled_for_all_projects'] = False
             if (field['configs'][0]['context']['project_ids']):
                 data['projects_codes'] = []
-                for id in field['configs'][0]['context']['project_ids']:
-                    if id in mappings.project_map:
-                        data['projects_codes'].append(mappings.project_map[id])
+                for config in field['configs']:
+                    for id in config['context']['project_ids']:
+                        if id in mappings.project_map:
+                            data['projects_codes'].append(mappings.project_map[id])
 
         if (self.__get_default_value(field)):
             data['default_value'] = self.__get_default_value(field)
@@ -211,6 +211,11 @@ class QaseService:
             'title': title,
             'code': code,
             'description': description if description else "",
+            'settings': {
+                'runs': {
+                    'auto_complete': False,
+                }
+            }
         }
 
         if group_id != None:
@@ -337,6 +342,9 @@ class QaseService:
                         if result['created_by']:
                             data['author_id'] = mappings.get_user_id(result['created_by'])
 
+                        if result['custom_step_results']:
+                            data['steps'] = self.prepare_result_steps(result['custom_step_results'], mappings.result_statuses)
+
                         res.append(data)
 
             if (len(res) > 0):
@@ -349,7 +357,25 @@ class QaseService:
                             results=res
                         )
                     )
-                
+
+    def prepare_result_steps(self, steps, status_map) -> list:
+        allowed_statuses = ['passed', 'failed', 'blocked', 'skipped']
+        data = []
+        for step in steps:
+            status = status_map[step['status_id']]
+            stepData = {
+                "status": status if status in allowed_statuses else 'skipped',
+            }
+
+            if step['actual']:
+                comment = step['actual'].strip()
+                if comment != '':
+                    stepData['comment'] = comment
+
+            data.append(stepData)
+
+        return data
+
     def convert_to_seconds(self, time_str: str) -> int:
         total_seconds = 0
 
