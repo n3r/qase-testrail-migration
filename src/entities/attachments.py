@@ -34,11 +34,11 @@ class Attachments:
         for attachment in attachments:
             if attachment:
                 attachment = attachment.strip('E_')
-            if attachment and attachment not in self.mappings.attachments_map[code]:
+            if attachment and attachment not in self.mappings.attachments_map:
                 self.logger.log(f'[Attachments] Attachment {attachment} not found in attachments_map (array)', 'warning')
                 self.replace_failover(attachment, code)
-            if attachment and attachment in self.mappings.attachments_map[code] and self.mappings.attachments_map[code][attachment] and 'hash' in self.mappings.attachments_map[code][attachment]:
-                result.append(self.mappings.attachments_map[code][attachment]['hash'])
+            if attachment and attachment in self.mappings.attachments_map and self.mappings.attachments_map[attachment] and 'hash' in self.mappings.attachments_map[attachment]:
+                result.append(self.mappings.attachments_map[attachment]['hash'])
         return result
     
     def check_attachments(self, string: str) -> List:
@@ -63,7 +63,7 @@ class Attachments:
             match = re.search(self.pattern, string)
             if match:
                 attachment_id = match.group(1)
-                if attachment_id not in self.mappings.attachments_map[code]:
+                if attachment_id not in self.mappings.attachments_map:
                     self.logger.log(f'[Attachments] Attachment {attachment_id} not found in attachments_map', 'warning')
                     self.replace_failover(attachment_id, code)
                 return self.replace_string(string, code, attachment_id)
@@ -79,7 +79,7 @@ class Attachments:
             attachment_data = self._get_attachment_meta(self.testrail.get_attachment(attachment_id))
             qase_attachment = self.qase.upload_attachment(code, attachment_data)
             if qase_attachment:
-                self.mappings.attachments_map[code][attachment_id] = qase_attachment
+                self.mappings.attachments_map[attachment_id] = qase_attachment
                 self.logger.log(f'[Attachments] Attachment {attachment_id} replaced in failover')
             else:
                 self.logger.log(f'[Attachments] Attachment {attachment_id} not replaced in failover', 'error')
@@ -89,7 +89,7 @@ class Attachments:
     def replace_string(self, string, code, attachment_id):
         return re.sub(
             self.pattern,
-            f'![{self.mappings.attachments_map[code][attachment_id]["filename"]}]({self.mappings.attachments_map[code][attachment_id]["url"]})',
+            f'![{self.mappings.attachments_map[attachment_id]["filename"]}]({self.mappings.attachments_map[attachment_id]["url"]})',
             string
         )
 
@@ -128,11 +128,9 @@ class Attachments:
                 except Exception as e:
                     self.logger.log(f'[Attachments] Exception when calling TestRail->get_attachment: {e}', 'error')
                 try:
-                    if code not in self.mappings.attachments_map:
-                        self.mappings.attachments_map[code] = {}
                     qase_attachment = self.qase.upload_attachment(code, meta)
                     if qase_attachment:
-                        self.mappings.attachments_map[code][attachment['id']] = qase_attachment
+                        self.mappings.attachments_map[attachment['id']] = qase_attachment
                         self.logger.log(f'[Attachments] Attachment {attachment["id"]} imported')
                         self.mappings.stats.add_attachment('qase')
                     else:

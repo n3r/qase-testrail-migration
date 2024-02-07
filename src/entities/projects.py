@@ -37,7 +37,6 @@ class Projects:
                         data['code'] = code
                         self.mappings.projects.append(data)
                         self.mappings.project_map[project['id']] = data['code']
-                        self.mappings.attachments_map[code] = {}
                         self.mappings.stats.add_project(code, project['name'])
                     else:
                         self.logger.log(f'Failed to create project: {project["name"]}', 'error')
