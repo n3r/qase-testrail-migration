@@ -67,7 +67,7 @@ class TestrailApiClient:
                     raise APIError('Invalid data or entity not found.')
                 else:
                     time.sleep(self.backoff_factor * (2 ** attempt))
-            except (requests.exceptions.Timeout, http.client.RemoteDisconnected, ConnectionResetError) as e:
+            except (requests.exceptions.Timeout, http.client.RemoteDisconnected, ConnectionResetError, requests.exceptions.ConnectionError) as e:
                 time.sleep(self.backoff_factor * (2 ** attempt))
             
             if attempt == self.max_retries:

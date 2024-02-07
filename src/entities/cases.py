@@ -119,8 +119,8 @@ class Cases:
                 id = attachment['id']
                 if 'data_id' in attachment:
                     id = attachment['data_id']
-                if id in self.mappings.attachments_map[self.project['code']]:
-                    data['attachments'].append(self.mappings.attachments_map[self.project['code']][id]['hash'])
+                if id in self.mappings.attachments_map:
+                    data['attachments'].append(self.mappings.attachments_map[id]['hash'])
             except Exception as e:
                 self.logger.log(f'[{self.project["code"]}][Tests] Failed to get attachment for case {case["title"]}: {e}', 'error')
         return data
