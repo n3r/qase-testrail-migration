@@ -33,7 +33,7 @@ class Attachments:
         result = []
         for attachment in attachments:
             if attachment:
-                attachment = attachment.strip('E_')
+                attachment = re.sub(r'^E_', '', attachment)
             if attachment and attachment not in self.mappings.attachments_map:
                 self.logger.log(f'[Attachments] Attachment {attachment} not found in attachments_map (array)', 'warning')
                 self.replace_failover(attachment, code)
@@ -58,15 +58,16 @@ class Attachments:
         return content
 
     def replace_attachments(self, string: str, code: str) -> str:
-        string = string.strip('E_')
+        string = re.sub(r'^E_', '', string)
         try:
-            match = re.search(self.pattern, string)
-            if match:
+
+            matches = re.finditer(self.pattern, string)
+            for match in matches:
                 attachment_id = match.group(1)
                 if attachment_id not in self.mappings.attachments_map:
                     self.logger.log(f'[Attachments] Attachment {attachment_id} not found in attachments_map', 'warning')
                     self.replace_failover(attachment_id, code)
-                return self.replace_string(string, code, attachment_id)
+                string = self.replace_string(string, code, attachment_id)
             else:
                 self.logger.log(f'[Attachments] No attachments found in a string {string}', 'warning')
         except Exception as e:
@@ -88,7 +89,7 @@ class Attachments:
     
     def replace_string(self, string, code, attachment_id):
         return re.sub(
-            self.pattern,
+            f'!\\[\\]\\(index\\.php\\?/attachments/get/{attachment_id}\\)',
             f'![{self.mappings.attachments_map[attachment_id]["filename"]}]({self.mappings.attachments_map[attachment_id]["url"]})',
             string
         )
