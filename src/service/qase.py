@@ -342,7 +342,7 @@ class QaseService:
                         if result['created_by']:
                             data['author_id'] = mappings.get_user_id(result['created_by'])
 
-                        if result['custom_step_results']:
+                        if 'custom_step_results' in result and result['custom_step_results']:
                             data['steps'] = self.prepare_result_steps(result['custom_step_results'], mappings.result_statuses)
 
                         res.append(data)
@@ -361,18 +361,21 @@ class QaseService:
     def prepare_result_steps(self, steps, status_map) -> list:
         allowed_statuses = ['passed', 'failed', 'blocked', 'skipped']
         data = []
-        for step in steps:
-            status = status_map[step['status_id']]
-            stepData = {
-                "status": status if status in allowed_statuses else 'skipped',
-            }
+        try:
+            for step in steps:
+                status = status_map[step['status_id']]
+                stepData = {
+                    "status": status if status in allowed_statuses else 'skipped',
+                }
 
-            if step['actual']:
-                comment = step['actual'].strip()
-                if comment != '':
-                    stepData['comment'] = comment
+                if step['actual']:
+                    comment = step['actual'].strip()
+                    if comment != '':
+                        stepData['comment'] = comment
 
-            data.append(stepData)
+                data.append(stepData)
+        except Exception as e:
+            self.logger.log(f'Exception when preparing result steps: {e}', 'error')
 
         return data
 
