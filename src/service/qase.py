@@ -363,17 +363,18 @@ class QaseService:
         data = []
         try:
             for step in steps:
-                status = status_map[step['status_id']]
-                stepData = {
+                status = status_map.get(step.get('status_id'), 'skipped')
+
+                step_data = {
                     "status": status if status in allowed_statuses else 'skipped',
                 }
 
-                if step['actual']:
+                if 'actual' in step and step['actual'] is not None:
                     comment = step['actual'].strip()
                     if comment != '':
-                        stepData['comment'] = comment
+                        step_data['comment'] = comment
 
-                data.append(stepData)
+                data.append(step_data)
         except Exception as e:
             self.logger.log(f'Exception when preparing result steps: {e}', 'error')
 
