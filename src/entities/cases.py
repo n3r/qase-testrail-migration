@@ -1,5 +1,8 @@
+import asyncio
+from concurrent.futures import ThreadPoolExecutor
+
 from ..service import QaseService, TestrailService
-from ..support import Logger, Mappings, ConfigManager as Config
+from ..support import Logger, Mappings, ConfigManager as Config, Pools
 
 from qaseio.models import TestStepCreate, TestCasebulkCasesInner
 from .attachments import Attachments
@@ -10,47 +13,60 @@ from urllib.parse import quote
 from datetime import datetime
 
 class Cases:
-    def __init__(self, qase_service: QaseService, testrail_service: TestrailService, logger: Logger, mappings: Mappings, config: Config) -> Mappings:
+    def __init__(
+            self,
+            qase_service: QaseService,
+            testrail_service: TestrailService,
+            logger: Logger,
+            mappings: Mappings,
+            config: Config,
+            pools: Pools,
+    ):
         self.qase = qase_service
         self.testrail = testrail_service
         self.config = config
         self.logger = logger
         self.mappings = mappings
+        self.pools = pools
         self.attachments = Attachments(self.qase, self.testrail, self.logger, self.mappings, self.config)
         self.total = 0
         self.logger.divider()
 
     def import_cases(self, project: dict):
+        return asyncio.run(self.import_cases_async(project))
+
+    async def import_cases_async(self, project: dict):
         self.project = project
 
-        if self.project['suite_mode'] == 3:
-            suites = self.testrail.get_suites(self.project['testrail_id'])
-            for suite in suites:
-                self.import_cases_for_suite(suite['id'])
-        else:
-            self.import_cases_for_suite(None)  # Assuming None is a valid suite_id when suite_mode is not 3
+        async with asyncio.TaskGroup() as tg:
+            if self.project['suite_mode'] == 3:
+                suites = await self.pools.tr(self.testrail.get_suites, self.project['testrail_id'])
+                for suite in suites:
+                    tg.create_task(self.import_cases_for_suite(suite['id']))
+            else:
+                tg.create_task(self.import_cases_for_suite(None))  # Assuming None is a valid suite_id when suite_mode is not 3
 
-    def import_cases_for_suite(self, suite_id):
+    async def import_cases_for_suite(self, suite_id):
         offset = 0
         limit = 100
         while True:
-            count = self.process_cases(suite_id, offset, limit)
+            count = await self.process_cases(suite_id, offset, limit)
             if count < limit:
                 break
             offset += limit
 
-    def process_cases(self, suite_id: int, offset: int, limit: int):
+    async def process_cases(self, suite_id: int, offset: int, limit: int):
         try:
             if suite_id == None:
                 suite_id = 0
-            cases = self.testrail.get_cases(self.project['testrail_id'], suite_id, limit, offset)
+            cases = await self.pools.tr(self.testrail.get_cases, self.project['testrail_id'], suite_id, limit, offset)
             self.mappings.stats.add_entity_count(self.project['code'], 'cases', 'testrail', cases['size'])
             if cases:
                 self.logger.print_status('['+self.project['code']+'] Importing test cases', self.total, self.total+cases['size'], 1)
                 self.logger.log(f'[{self.project["code"]}][Tests] Importing {cases["size"]} cases from {offset} to {offset + limit} for suite {suite_id}')
-                data = self._prepare_cases(cases)
+                data = await self._prepare_cases(cases)
                 if data:
-                    status = self.qase.create_cases(self.project['code'], data)
+                    status = await self.pools.qs(self.qase.create_cases, self.project['code'], data)
                     if status:
                         self.mappings.stats.add_entity_count(self.project['code'], 'cases', 'qase', cases['size'])
                 self.total = self.total + cases['size']
@@ -60,39 +76,43 @@ class Cases:
             self.logger.log(f"[{self.project['code']}][Tests] Error processing cases for suite {suite_id}: {e}", 'error')
             return 0
 
-    def _prepare_cases(self, cases: List) -> List:
+    async def _prepare_cases(self, cases: List) -> List:
         result = []
-        for case in cases['cases']:
-            data = {
-                'id': int(case['id']),
-                'title': case['title'],
-                'created_at': str(datetime.fromtimestamp(case['created_on'])),
-                'updated_at': str(datetime.fromtimestamp(case['updated_on'])),
-                'author_id': self.mappings.get_user_id(case['created_by']),
-                'steps': [],
-                'attachments': [],
-                'is_flaky': 0,
-                'custom_field': {},
-            }
+        async with asyncio.TaskGroup() as tg:
+            for case in cases['cases']:
+                tg.create_task(self._prepare_case(case, result))
 
-            # import custom fields
-            data = self._import_custom_fields_for_case(case=case, data=data)
-            data = self._get_attachments_for_case(case=case, data=data)
-
-            data = self._set_priority(case=case, data=data)
-            data = self._set_type(case=case, data=data)
-            data = self._set_status(case=case, data=data)
-            data = self._set_suite(case=case, data=data)
-            data = self._set_refs(case=case, data=data)
-            data = self._set_milestone(case=case, data=data, code=self.project['code'])
-
-            result.append(
-                TestCasebulkCasesInner(
-                    **data
-                )
-            )
         return result
-    
+
+    async def _prepare_case(self, case, result):
+        data = {
+            'id': int(case['id']),
+            'title': case['title'],
+            'created_at': str(datetime.fromtimestamp(case['created_on'])),
+            'updated_at': str(datetime.fromtimestamp(case['updated_on'])),
+            'author_id': self.mappings.get_user_id(case['created_by']),
+            'steps': [],
+            'attachments': [],
+            'is_flaky': 0,
+            'custom_field': {},
+        }
+
+        # import custom fields
+        data = self._import_custom_fields_for_case(case=case, data=data)
+        data = await self._get_attachments_for_case(case=case, data=data)
+
+        data = self._set_priority(case=case, data=data)
+        data = self._set_type(case=case, data=data)
+        data = self._set_status(case=case, data=data)
+        data = self._set_suite(case=case, data=data)
+        data = self._set_refs(case=case, data=data)
+        data = self._set_milestone(case=case, data=data, code=self.project['code'])
+
+        result.append(
+            TestCasebulkCasesInner(
+                **data
+            )
+        )
     # Done
     def _set_refs(self, case:dict, data: dict):
         if self.mappings.refs_id and case['refs'] and self.config.get('tests.refs.enable'):
@@ -107,10 +127,10 @@ class Cases:
                 data['custom_field'][str(self.mappings.refs_id)] = quote(string, safe="/:")
         return data
     
-    def _get_attachments_for_case(self, case: dict, data: dict) -> dict:
+    async def _get_attachments_for_case(self, case: dict, data: dict) -> dict:
         self.logger.log(f'[{self.project["code"]}][Tests] Getting attachments for case {case["title"]}')
         try:
-            attachments = self.testrail.get_attachments_case(case['id'])
+            attachments = await self.pools.tr(self.testrail.get_attachments_case, case['id'])
         except Exception as e:
             self.logger.log(f'[{self.project["code"]}][Tests] Failed to get attachments for case {case["title"]}: {e}', 'error')
             return data

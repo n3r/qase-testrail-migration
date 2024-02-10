@@ -19,5 +19,5 @@ __all__ = [
     "Milestones",
     "Attachments",
     "Configurations",
-    "SharedSteps"
+    "SharedSteps",
 ]
