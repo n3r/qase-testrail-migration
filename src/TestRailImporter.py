@@ -1,16 +1,21 @@
-from .support import ConfigManager, Logger, Mappings
+from .support import ConfigManager, Logger, Mappings, ThrottledThreadPoolExecutor, Pools
 from .service import QaseService, TestrailService, QaseScimService
 from .entities import Users, Fields, Projects, Suites, Cases, Runs, Milestones, Configurations, Attachments, SharedSteps
 from concurrent.futures import ThreadPoolExecutor
 
 class TestRailImporter:
     def __init__(self, config: ConfigManager, logger: Logger) -> None:
+        self.pools = Pools(
+            qase_pool=ThrottledThreadPoolExecutor(max_workers=8, requests=500, interval=60),
+            tr_pool=ThreadPoolExecutor(max_workers=8),
+        )
+
         self.logger = logger
         self.config = config
         self.qase_scim_service = None
         
         self.qase_service = QaseService(config, logger)
-        if (config.get('qase.scim_token')):
+        if config.get('qase.scim_token'):
             self.qase_scim_service = QaseScimService(config, logger)
 
         self.testrail_service = TestrailService(config, logger)
@@ -41,9 +46,9 @@ class TestRailImporter:
 
         # Step 3. Import attachments
         self.mappings = Attachments(
-            self.qase_service, 
-            self.testrail_service, 
-            self.logger, 
+            self.qase_service,
+            self.testrail_service,
+            self.logger,
             self.mappings,
             self.config
         ).import_all_attachments()
@@ -75,53 +80,58 @@ class TestRailImporter:
         self.mappings.stats.save_xlsx(str(self.config.get('prefix')))
 
     def import_project_data(self, project):
-        self.logger.print_group(f'Importing project: {project["name"]}' 
-                                + (' (' 
-                                + project['suite_title'] 
-                                + ')' if 'suite_title' in project else ''))
+        self.logger.print_group(f'Importing project: {project["name"]}'
+                                + (' ('
+                                   + project['suite_title']
+                                   + ')' if 'suite_title' in project else ''))
 
         self.mappings = Configurations(
-            self.qase_service, 
-            self.testrail_service, 
-            self.logger, 
+            self.qase_service,
+            self.testrail_service,
+            self.logger,
             self.mappings,
+            self.pools,
         ).import_configurations(project)
 
         self.mappings = SharedSteps(
-            self.qase_service, 
-            self.testrail_service, 
-            self.logger, 
+            self.qase_service,
+            self.testrail_service,
+            self.logger,
             self.mappings,
+            self.pools,
         ).import_shared_steps(project)
 
         self.mappings = Milestones(
-            self.qase_service, 
-            self.testrail_service, 
-            self.logger, 
+            self.qase_service,
+            self.testrail_service,
+            self.logger,
             self.mappings,
         ).import_milestones(project)
 
         self.mappings = Suites(
-            self.qase_service, 
-            self.testrail_service, 
-            self.logger, 
-            self.mappings, 
-            self.config
+            self.qase_service,
+            self.testrail_service,
+            self.logger,
+            self.mappings,
+            self.config,
+            self.pools,
         ).import_suites(project)
 
         Cases(
-            self.qase_service, 
-            self.testrail_service, 
-            self.logger, 
-            self.mappings, 
-            self.config
+            self.qase_service,
+            self.testrail_service,
+            self.logger,
+            self.mappings,
+            self.config,
+            self.pools,
         ).import_cases(project)
 
         Runs(
-            self.qase_service, 
-            self.testrail_service, 
-            self.logger, 
-            self.mappings, 
+            self.qase_service,
+            self.testrail_service,
+            self.logger,
+            self.mappings,
             self.config,
-            project
+            project,
+            self.pools,
         ).import_runs()

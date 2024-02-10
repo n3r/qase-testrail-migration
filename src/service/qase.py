@@ -100,7 +100,7 @@ class QaseService:
                 code=project_code, 
                 configuration_group_create=ConfigurationGroupCreate(title=title)
             )
-            if (api_response.status == False):
+            if not api_response.status:
                 self.logger.log('Error creating configuration group: ' + title)
             else:
                 self.logger.log('Configuration group created: ' + title)
@@ -115,9 +115,9 @@ class QaseService:
             # Create a custom field.
             api_response = api_instance.create_configuration(
                 code=project_code, 
-                configuration_create = ConfigurationCreate(title=title, group_id=group_id)
+                configuration_create=ConfigurationCreate(title=title, group_id=group_id)
             )
-            if (api_response.status == False):
+            if not api_response.status:
                 self.logger.log('Error creating configuration: ' + title)
             else:
                 self.logger.log('Configuration created: ' + title)
@@ -270,18 +270,18 @@ class QaseService:
             'author_id': run['author_id']
         }
 
-        if (run['description']):
+        if run['description']:
             data['description'] = run['description']
 
-        if ('plan_name' in run and run['plan_name']):
+        if 'plan_name' in run and run['plan_name']:
             data['title'] = '['+run['plan_name']+'] '+run['name']
         else:
             data['title'] = run['name']
 
-        if ('configurations' in run and run['configurations'] and len(run['configurations']) > 0):
+        if 'configurations' in run and run['configurations'] and len(run['configurations']) > 0:
             data['configurations'] = run['configurations']
 
-        if (run['is_completed']):
+        if run['is_completed']:
             data['end_time'] = datetime.fromtimestamp(run['completed_on']).strftime('%Y-%m-%d %H:%M:%S')
 
         if milestone_id:
@@ -299,12 +299,12 @@ class QaseService:
     def send_bulk_results(self, tr_run, results, qase_run_id, qase_code, mappings, cases_map):
         res = []
 
-        if (results):
+        if results:
             for result in results:
                 if result['status_id'] != 3:
 
                     elapsed = 0
-                    if ('elapsed' in result and result['elapsed']):
+                    if 'elapsed' in result and result['elapsed']:
                         if type(result['elapsed']) == str:
                             elapsed = self.convert_to_seconds(result['elapsed'])
                         else:
@@ -347,7 +347,7 @@ class QaseService:
 
                         res.append(data)
 
-            if (len(res) > 0):
+            if len(res) > 0:
                 api_results = ResultsApi(self.client)
                 self.logger.log(f'Sending {len(res)} results to Qase')
                 api_results.create_result_bulk(
@@ -363,7 +363,7 @@ class QaseService:
         data = []
         try:
             for step in steps:
-                status = status_map.get(step.get('status_id'), 'skipped')
+                status = status_map.get(str(step.get('status_id')), 'skipped')
 
                 step_data = {
                     "status": status if status in allowed_statuses else 'skipped',
@@ -436,7 +436,7 @@ class QaseService:
 
         for step in steps:
             action = step['content'].strip()
-            if (action == ''):
+            if action == '':
                 action = 'No action'
             inner_steps.append(
                 SharedStepContentCreate(
@@ -446,5 +446,5 @@ class QaseService:
             )
                 
         api_instance = SharedStepsApi(self.client)
-        api_response = api_instance.create_shared_step(project_code, SharedStepCreate(title=title, steps=inner_steps))
+        api_response = api_instance.create_shared_step(project_code, SharedStepCreate(title=title, steps=inner_steps), **kwargs)
         return api_response.result.hash

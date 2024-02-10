@@ -14,7 +14,7 @@ if prefix == None:
 
 logger = Logger(config.get('debug'), prefix=prefix)
 
-if (config.get('sync')):
+if config.get('sync'):
     importer = TestRailImporterSync(config, logger)
 else:
     importer = TestRailImporter(config, logger)
