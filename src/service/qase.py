@@ -363,7 +363,7 @@ class QaseService:
         data = []
         try:
             for step in steps:
-                status = status_map.get(step.get('status_id'), 'skipped')
+                status = status_map.get(str(step.get('status_id')), 'skipped')
 
                 step_data = {
                     "status": status if status in allowed_statuses else 'skipped',
