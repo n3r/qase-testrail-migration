@@ -1,12 +1,16 @@
+import time
+from datetime import datetime
+
 from .support import ConfigManager, Logger, Mappings, ThrottledThreadPoolExecutor, Pools
 from .service import QaseService, TestrailService, QaseScimService
 from .entities import Users, Fields, Projects, Suites, Cases, Runs, Milestones, Configurations, Attachments, SharedSteps
 from concurrent.futures import ThreadPoolExecutor
 
+
 class TestRailImporter:
     def __init__(self, config: ConfigManager, logger: Logger) -> None:
         self.pools = Pools(
-            qase_pool=ThrottledThreadPoolExecutor(max_workers=8, requests=500, interval=60),
+            qase_pool=ThrottledThreadPoolExecutor(max_workers=8, requests=1300, interval=60),
             tr_pool=ThreadPoolExecutor(max_workers=8),
         )
 
@@ -25,6 +29,10 @@ class TestRailImporter:
         self.mappings = Mappings(self.config.get('users.default'))
 
     def start(self):
+        self.logger.print_status('Preparing import...', 0, 1)
+        time.sleep(60 - datetime.utcnow().second)  # Wait for the beginning of the next minute to reset the rate limit
+        self.logger.print_status('Preparing import...', 1, 1)
+
         # Step 1. Build users map
         self.mappings = Users(
             self.qase_service,
@@ -32,6 +40,7 @@ class TestRailImporter:
             self.logger,
             self.mappings,
             self.config,
+            self.pools,
             self.qase_scim_service,
         ).import_users()
 
@@ -41,7 +50,8 @@ class TestRailImporter:
             self.testrail_service, 
             self.logger, 
             self.mappings,
-            self.config
+            self.config,
+            self.pools,
         ).import_projects()
 
         # Step 3. Import attachments
@@ -50,7 +60,8 @@ class TestRailImporter:
             self.testrail_service,
             self.logger,
             self.mappings,
-            self.config
+            self.config,
+            self.pools,
         ).import_all_attachments()
 
         # Step 4. Import custom fields
@@ -60,6 +71,7 @@ class TestRailImporter:
             self.logger, 
             self.mappings,
             self.config,
+            self.pools,
         ).import_fields()
 
         # Step 5. Import projects data in parallel

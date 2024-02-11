@@ -3,6 +3,7 @@ import json
 import os
 import pandas as pd
 
+
 class Stats:
     def __init__(self):
         self.projects = {}

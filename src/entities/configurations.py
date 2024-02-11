@@ -1,5 +1,3 @@
-from concurrent.futures import ThreadPoolExecutor
-
 from ..service import QaseService, TestrailService
 from ..support import Logger, Mappings, Pools
 

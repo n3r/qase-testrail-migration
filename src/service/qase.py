@@ -24,6 +24,7 @@ from datetime import datetime
 
 from qaseio.exceptions import ApiException
 
+
 class QaseService:
     def __init__(self, config: ConfigManager, logger: Logger):
         self.config = config
@@ -54,19 +55,15 @@ class QaseService:
         except ApiException as e:
             self.logger.log("Exception when calling AuthorsApi->get_authors: %s\n" % e)
     
-    def get_all_users(self, batch_size = 100):
-        flag = True
-        limit = batch_size
+    def get_all_users(self, limit=100):
         offset = 0
-        users = []
-        while flag:
+        while True:
             result = self._get_users(limit, offset)
-            users += result
+            yield result
             offset += limit
-            if (len(result) < limit):
-                flag = False
-        return users
-    
+            if len(result) < limit:
+                break
+
     def get_case_custom_fields(self):
         self.logger.log('Getting custom fields from Qase')
         try:

@@ -1,7 +1,7 @@
-from ..service import QaseService, TestrailService
-from ..support import Logger, Mappings, ConfigManager as Config
+import asyncio
 
-from concurrent.futures import ThreadPoolExecutor
+from ..service import QaseService, TestrailService
+from ..support import Logger, Mappings, ConfigManager as Config, Pools
 
 from typing import List
 
@@ -13,13 +13,23 @@ import re
 import os
 import json
 
+
 class Attachments:
-    def __init__(self, qase_service: QaseService, testrail_service: TestrailService, logger: Logger, mappings: Mappings, config: Config) -> Mappings:
+    def __init__(
+            self,
+            qase_service: QaseService,
+            testrail_service: TestrailService,
+            logger: Logger,
+            mappings: Mappings,
+            config: Config,
+            pools: Pools,
+    ):
         self.qase = qase_service
         self.testrail = testrail_service
         self.logger = logger
         self.config = config
         self.mappings = mappings
+        self.pools = pools
         self.pattern = r'!\[\]\(index\.php\?/attachments/get/([a-f0-9-]+)\)'
 
     def check_and_replace_attachments(self, string: str, code: str) -> str:
@@ -95,29 +105,25 @@ class Attachments:
         )
 
     def import_all_attachments(self) -> Mappings:
+        return asyncio.run(self.import_all_attachments_async())
+
+    async def import_all_attachments_async(self) -> Mappings:
         self.logger.log('[Attachments] Importing all attachments')
         attachments_raw = self.testrail.get_attachments_list()
         self.mappings.stats.add_attachment('testrail', len(attachments_raw))
 
-        if (self.config.get('cache')):
+        if self.config.get('cache'):
             self._save_cache(attachments_raw)
 
-        with ThreadPoolExecutor(max_workers=7) as executor:
-            futures = []
+        async with asyncio.TaskGroup() as tg:
             for attachment in attachments_raw:
-                # Submit each project import to the thread pool
-                future = executor.submit(self.import_raw_attachment, attachment)
-                futures.append(future)
+                tg.create_task(self.import_raw_attachment(attachment))
 
-            # Wait for all futures to complete
-            for future in futures:
-                # This will also re-raise any exceptions caught during execution of the callable
-                future.result()
         self.logger.log(f'[Attachments] Imported {len(attachments_raw)} attachments')
 
         return self.mappings
 
-    def import_raw_attachment(self, attachment):
+    async def import_raw_attachment(self, attachment):
         self.logger.log(f'[Attachments] Importing attachment: {attachment["id"]}')
         if len(attachment['project_id']) > 1:
             self.logger.log(f'[Attachments] Attachment {attachment["id"]} is linked to multiple projects', 'warning')
@@ -125,11 +131,13 @@ class Attachments:
             if attachment['project_id'][0] in self.mappings.project_map:
                 code = self.mappings.project_map[attachment['project_id'][0]]
                 try: 
-                    meta = self._get_attachment_meta(self.testrail.get_attachment(attachment['id']))
+                    meta = self._get_attachment_meta(await self.pools.tr(self.testrail.get_attachment, attachment['id']))
                 except Exception as e:
                     self.logger.log(f'[Attachments] Exception when calling TestRail->get_attachment: {e}', 'error')
+                    return
+
                 try:
-                    qase_attachment = self.qase.upload_attachment(code, meta)
+                    qase_attachment = await self.pools.qs(self.qase.upload_attachment, code, meta)
                     if qase_attachment:
                         self.mappings.attachments_map[attachment['id']] = qase_attachment
                         self.logger.log(f'[Attachments] Attachment {attachment["id"]} imported')
@@ -149,7 +157,7 @@ class Attachments:
     def _save_cache(self, attachments):
         self.logger.log('[Attachments] Saving attachments cache')
         prefix = ''
-        if (self.config.get('prefix')):
+        if self.config.get('prefix'):
             prefix = self.config.get('prefix')
         filename = f'{prefix}_attachments.json'
         log_dir = './cache'

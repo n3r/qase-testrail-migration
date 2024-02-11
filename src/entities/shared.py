@@ -1,8 +1,7 @@
 import asyncio
-from concurrent.futures import ThreadPoolExecutor
 
 from ..service import QaseService, TestrailService
-from ..support import Logger, Mappings, ConfigManager as Config, Pools
+from ..support import Logger, Mappings, Pools
 
 
 class SharedSteps:

@@ -1,11 +1,14 @@
+import math
 import time
 from concurrent.futures import ThreadPoolExecutor
 import threading
 
 
 class ThrottledThreadPoolExecutor(ThreadPoolExecutor):
-    def __init__(self, max_workers=None, requests=100, interval=1):
+    def __init__(self, max_workers=None, requests=100, interval=1, refill_factor=1):
         super().__init__(max_workers)
+        self.interval = interval
+        self.refill_factor = refill_factor
         self.rate = requests / interval
         self.capacity = requests
         self.tokens = self.capacity
@@ -17,11 +20,12 @@ class ThrottledThreadPoolExecutor(ThreadPoolExecutor):
         now = time.monotonic()
         with self._lock:
             elapsed = now - self.last_refill_time
-            refill_amount = elapsed * self.rate
-            if refill_amount > 0:
-                self.tokens = min(self.capacity, self.tokens + refill_amount)
-                self.last_refill_time = now
-                return True
+            if elapsed >= self.interval / self.refill_factor:
+                refill_amount = elapsed * self.rate
+                if refill_amount >= 1:
+                    self.tokens = min(self.capacity, math.floor(self.tokens + refill_amount))
+                    self.last_refill_time = now
+                    return True
         return False
 
     def submit(self, fn, *args, **kwargs):

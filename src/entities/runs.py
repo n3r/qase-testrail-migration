@@ -1,5 +1,4 @@
 import asyncio
-from concurrent.futures import ThreadPoolExecutor
 
 from ..service import QaseService, TestrailService
 from ..support import Logger, Mappings, ConfigManager as Config, Pools
@@ -26,7 +25,7 @@ class Runs:
         self.project = project
         self.pools = pools
 
-        self.attachments = Attachments(self.qase, self.testrail, self.logger, self.mappings, self.config)
+        self.attachments = Attachments(self.qase, self.testrail, self.logger, self.mappings, self.config, self.pools)
         
         self.configurations = self.mappings.configurations[self.project['code']]
 
@@ -35,9 +34,9 @@ class Runs:
         self.logger.divider()
 
     def import_runs(self) -> None:
-        return asyncio.run(self.import_runs_sync())
+        return asyncio.run(self.import_runs_async())
 
-    async def import_runs_sync(self) -> None:
+    async def import_runs_async(self) -> None:
         self.logger.log(f'[{self.project["code"]}][Runs] Importing runs from TestRail project {self.project["name"]}')
         await self._build_index()
         self.logger.log(f'[{self.project["code"]}][Runs] Found {str(len(self.index))} runs')

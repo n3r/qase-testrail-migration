@@ -1,5 +1,6 @@
 from ..service import QaseService, TestrailService
-from ..support import Logger, Mappings, ConfigManager as Config
+from ..support import Logger, Mappings
+
 
 class Milestones:
     def __init__(self, qase_service: QaseService, testrail_service: TestrailService, logger: Logger, mappings: Mappings) -> Mappings:

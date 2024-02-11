@@ -1,5 +1,6 @@
 from .stats import Stats
 
+
 class Mappings:
     def __init__(self, default_user: int = 1):
         self.suites = {}

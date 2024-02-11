@@ -5,6 +5,7 @@ from ..api import QaseScimClient
 from qaseio.exceptions import ApiException
 from ..exceptions import ImportException
 
+
 class QaseScimService:
     def __init__(self, config: ConfigManager, logger: Logger):
         self.config = config
@@ -34,20 +35,15 @@ class QaseScimService:
         except ApiException as e:
             raise ImportException(f'Failed to create user: {e}')
         
-    def get_all_users(self):
-        try:
-            users = []
-            limit = 100
-            offset = 0
-            while True:
-                response = self.client.get_users(limit, offset)
-                users = users + response['Resources']
-                if (len(response['Resources']) < limit):
-                    break
-                offset += limit
-            return users
-        except ApiException as e:
-            raise ImportException(f'Failed to get users: {e}')
+    def get_all_users(self, limit=100):
+        offset = 0
+        while True:
+            response = self.client.get_users(limit, offset)
+            users = response['Resources']
+            yield users
+            offset += limit
+            if len(users) < limit:
+                break
         
     def create_group(self, group_name):
         try:

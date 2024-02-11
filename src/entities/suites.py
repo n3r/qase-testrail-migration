@@ -1,5 +1,4 @@
 import asyncio
-from concurrent.futures import ThreadPoolExecutor
 
 from ..service import QaseService, TestrailService
 from ..support import Logger, Mappings, ConfigManager as Config, Pools
@@ -7,6 +6,7 @@ from ..support import Logger, Mappings, ConfigManager as Config, Pools
 from .attachments import Attachments
 
 from typing import List, Optional
+
 
 class Suites:
     def __init__(
@@ -24,7 +24,7 @@ class Suites:
         self.logger = logger
         self.mappings = mappings
         self.pools = pools
-        self.attachments = Attachments(self.qase, self.testrail, self.logger, self.mappings, self.config)
+        self.attachments = Attachments(self.qase, self.testrail, self.logger, self.mappings, self.config, self.pools)
 
         self.suites_map = {}
         self.logger.divider()

@@ -1,5 +1,4 @@
 import asyncio
-from concurrent.futures import ThreadPoolExecutor
 
 from ..service import QaseService, TestrailService
 from ..support import Logger, Mappings, ConfigManager as Config, Pools
@@ -11,6 +10,7 @@ from typing import List, Optional, Union
 
 from urllib.parse import quote
 from datetime import datetime
+
 
 class Cases:
     def __init__(
@@ -28,9 +28,11 @@ class Cases:
         self.logger = logger
         self.mappings = mappings
         self.pools = pools
-        self.attachments = Attachments(self.qase, self.testrail, self.logger, self.mappings, self.config)
+        self.attachments = Attachments(self.qase, self.testrail, self.logger, self.mappings, self.config, self.pools)
         self.total = 0
         self.logger.divider()
+
+        self.project = None
 
     def import_cases(self, project: dict):
         return asyncio.run(self.import_cases_async(project))

@@ -1,6 +1,7 @@
 import os
 import json
 
+
 class ConfigManager:
 
     def __init__(self, config_file = './config.json', env_vars_prefix = 'QASE_'):

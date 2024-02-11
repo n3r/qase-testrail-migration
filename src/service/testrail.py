@@ -1,6 +1,7 @@
 from ..repository.testrail import TestrailApiRepository, TestrailDbRepository
 from ..api.testrail import TestrailApiClient
 
+
 class TestrailService:
     def __init__(self, config, logger):
         self.db_repository = None
