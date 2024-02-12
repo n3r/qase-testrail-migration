@@ -10,7 +10,7 @@ from concurrent.futures import ThreadPoolExecutor
 class TestRailImporter:
     def __init__(self, config: ConfigManager, logger: Logger) -> None:
         self.pools = Pools(
-            qase_pool=ThrottledThreadPoolExecutor(max_workers=8, requests=1300, interval=60),
+            qase_pool=ThrottledThreadPoolExecutor(max_workers=8, requests=230, interval=10),
             tr_pool=ThreadPoolExecutor(max_workers=8),
         )
 
@@ -29,10 +29,6 @@ class TestRailImporter:
         self.mappings = Mappings(self.config.get('users.default'))
 
     def start(self):
-        self.logger.print_status('Preparing import...', 0, 1)
-        time.sleep(60 - datetime.utcnow().second)  # Wait for the beginning of the next minute to reset the rate limit
-        self.logger.print_status('Preparing import...', 1, 1)
-
         # Step 1. Build users map
         self.mappings = Users(
             self.qase_service,

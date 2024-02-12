@@ -29,16 +29,19 @@ class ThrottledThreadPoolExecutor(ThreadPoolExecutor):
         return False
 
     def submit(self, fn, *args, **kwargs):
-        while True:
-            with self._lock:
-                if self.tokens > 0:
-                    self.tokens -= 1
-                    break  # Token is available, proceed to submit the task
-            # Attempt to refill tokens without holding the lock the entire time
-            if not self._try_refill_tokens():
-                self._wait_event.wait(0.1)  # Wait briefly and then try again
-                self._wait_event.clear()  # Clear the event to reset its state
-            else:
-                self._wait_event.set()  # Signal that tokens may have been refilled
+        def exec_throttled():
+            while True:
+                with self._lock:
+                    if self.tokens > 0:
+                        self.tokens -= 1
+                        break  # Token is available, proceed to submit the task
+                # Attempt to refill tokens without holding the lock the entire time
+                if not self._try_refill_tokens():
+                    self._wait_event.wait(0.1)  # Wait briefly and then try again
+                    self._wait_event.clear()  # Clear the event to reset its state
+                else:
+                    self._wait_event.set()  # Signal that tokens may have been refilled
 
-        return super().submit(fn, *args, **kwargs)
+            return fn(*args, **kwargs)
+
+        return super().submit(exec_throttled)
