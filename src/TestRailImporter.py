@@ -1,6 +1,3 @@
-import time
-from datetime import datetime
-
 from .support import ConfigManager, Logger, Mappings, ThrottledThreadPoolExecutor, Pools
 from .service import QaseService, TestrailService, QaseScimService
 from .entities import Users, Fields, Projects, Suites, Cases, Runs, Milestones, Configurations, Attachments, SharedSteps
