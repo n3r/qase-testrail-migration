@@ -1,4 +1,4 @@
-qaseio>=4.0.0
+qaseio>=4.0.1
 certifi
 requests
 urllib3
