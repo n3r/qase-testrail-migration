@@ -100,14 +100,12 @@ class TestrailApiClient:
         self.logger.log(f'Getting attachments list, offset: {offset}')
         try:
             response = self.session.post(self.base_url + 'index.php?/attachments/overview/0', data=data, headers=headers)
+            response_data = response.json()
+            # Extract only the needed fields (id and project_id) from each item
+            return [{"id": item["id"], "project_id": item["project_id"]} for item in response_data['data']]
         except Exception as e:
             self.logger.log(f'Failed to get attachments list, offset: {offset}: {e}')
             return None
-        response_data = response.json()
-        if not response_data['data']:  # If data array is empty
-            return None
-        # Extract only the needed fields (id and project_id) from each item
-        return [{"id": item["id"], "project_id": item["project_id"]} for item in response_data['data']]
 
     def get_attachments_list(self):
         max_workers = 24
