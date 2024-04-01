@@ -98,14 +98,6 @@ class TestRailImporter:
             self.pools,
         ).import_configurations(project)
 
-        self.mappings = SharedSteps(
-            self.qase_service,
-            self.testrail_service,
-            self.logger,
-            self.mappings,
-            self.pools,
-        ).import_shared_steps(project)
-
         self.mappings = Milestones(
             self.qase_service,
             self.testrail_service,

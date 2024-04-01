@@ -69,8 +69,8 @@ class Runs:
         while True:
             data['offset'] = offset
             runs = await self.pools.tr(self.testrail.get_runs, **data)
-            self.logger.log(f'[{self.project["code"]}][Runs] Found {str(len(runs["runs"]))} runs in TestRail')
-            for run in runs['runs']:
+            self.logger.log(f'[{self.project["code"]}][Runs] Found {str(len(runs))} runs in TestRail')
+            for run in runs:
                 self.index.append({
                     'id': run['id'],
                     'name': run['name'],
@@ -83,7 +83,7 @@ class Runs:
                     'author_id': self.mappings.get_user_id(run['created_by']),
                 })
 
-            if runs['size'] < limit:
+            if len(runs) < limit:
                 break
 
             offset = offset + limit
@@ -97,12 +97,12 @@ class Runs:
         while True:
             self.logger.log(f'[{self.project["code"]}][Runs] Fetching plans from TestRail')
             plans = await self.pools.tr(self.testrail.get_plans, self.project['testrail_id'], limit, offset)
-            for plan in plans['plans']:
+            for plan in plans:
                 plan = self.testrail.get_plan(plan['id'])
                 if plan is not None and 'entries' in plan and plan['entries'] and len(plan['entries']) > 0:
                     self.logger.log(f'[{self.project["code"]}][Runs] Fetching runs for plan {plan["id"]}')
                     for entry in plan['entries']:
-                        for run in entry['runs']:
+                        for run in entry:
                             self.index.append({
                                 'id': run['id'],
                                 'name': run['name'],
@@ -116,7 +116,7 @@ class Runs:
                                 'milestone_id': run['milestone_id'],
                                 'author_id': self.mappings.get_user_id(run['created_by']),
                             })
-            if plans['size'] < limit:
+            if len(plans) < limit:
                 break
 
             offset = offset + limit
@@ -158,9 +158,9 @@ class Runs:
         while True:
             self.logger.log(f'[{self.project["code"]}][Runs] Fetching results for the run {run["name"]} [{run["id"]}]')
             results = await self.pools.tr(self.testrail.get_results, run['id'], limit, offset)
-            run_results = run_results + self._clean_results(results['results'])
+            run_results = run_results + self._clean_results(results)
             offset = offset + limit
-            if results['size'] < limit:
+            if len(results) < limit:
                 break
 
         self.logger.log(f'[{self.project["code"]}][Runs] Found {str(len(run_results))} results for the run {run["name"]} [{run["id"]}]')
@@ -275,10 +275,10 @@ class Runs:
 
         while process:
             tests = await self.pools.tr(self.testrail.get_tests, run['id'], limit, offset)
-            if tests['size'] < limit:
+            if len(tests) < limit:
                 process = False
             offset = offset + limit
-            for test in tests['tests']:
+            for test in tests:
                 if test['case_id']:
                     cases_map[test['id']] = test['case_id']
         return cases_map
