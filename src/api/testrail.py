@@ -32,24 +32,7 @@ class TestrailApiClient:
         self.page_size = 30
 
         # Create a session object
-        self.session = requests.Session()
-        headers = {
-            'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
-            'Content-Type': 'application/x-www-form-urlencoded',
-            'Accept-Encoding': 'gzip, deflate, br',
-            'Accept': '*/*',
-            'Connection': 'keep-alive',
-        }
-        login_response = self.session.post(base_url + 'index.php?/auth/login/', data={'name': user, 'password': token, 'rememberme': '1'}, headers=headers)
-
-        soup = BeautifulSoup(login_response.content, 'html.parser')
-
-        # Find the input tag with name="_token" and extract the value attribute
-        self.csrf_token = soup.find('input', {'name': '_token'})['value']
-
-        if login_response.status_code != 200:
-            self.logger.log('Failed to login to TestRail API and get auth cookie')
-            self.session = None
+        self.session = None
 
     def get(self, uri):
         return self.send_request(requests.get, uri)
