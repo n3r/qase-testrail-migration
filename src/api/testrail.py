@@ -4,7 +4,6 @@ import requests
 import re
 import http.client
 from concurrent.futures import ThreadPoolExecutor, as_completed
-from bs4 import BeautifulSoup
 
 
 class TestrailApiClient:
@@ -16,23 +15,15 @@ class TestrailApiClient:
         self.logger = logger
         self.base_url = base_url
 
-        self.auth = str(
-            base64.b64encode(
-                bytes('%s:%s' % (user, token), 'utf-8')
-            ),
-            'ascii'
-        ).strip()
-
         self.headers = {
-            'Authorization': 'Basic ' + self.auth,
             'Content-Type': 'application/json',
         }
+        self.auth = (user, token)
         self.max_retries = max_retries
         self.backoff_factor = backoff_factor
         self.page_size = 30
 
         # Create a session object
-        self.session = None
 
     def get(self, uri):
         return self.send_request(requests.get, uri)
@@ -41,7 +32,7 @@ class TestrailApiClient:
         url = self.__url + uri
         for attempt in range(self.max_retries + 1):
             try:
-                response = request_method(url, headers=self.headers, data=payload)
+                response = request_method(url, headers=self.headers, data=payload, auth=self.auth)
                 if response.status_code != 429 and response.status_code <= 201:
                     return self.process_response(response, uri)
                 if response.status_code == 403:
