@@ -303,7 +303,7 @@ class QaseService:
 
                     elapsed = 0
                     if 'elapsed' in result and result['elapsed']:
-                        if type(result['elapsed']) == str:
+                        if type(result['elapsed']) is str:
                             elapsed = self.convert_to_seconds(result['elapsed'])
                         else:
                             elapsed = int(result['elapsed'])
@@ -433,7 +433,7 @@ class QaseService:
         inner_steps = []
 
         for step in steps:
-            action = step['content'].strip() if 'content' in step else 'No action'
+            action = step['content'].strip() if 'content' in step and type(step['content']) is str else 'No action'
 
             if action == '':
                 action = 'No action'
