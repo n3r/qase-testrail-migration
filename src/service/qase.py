@@ -433,7 +433,8 @@ class QaseService:
         inner_steps = []
 
         for step in steps:
-            action = step['content'].strip()
+            action = step['content'].strip() if 'content' in step else 'No action'
+
             if action == '':
                 action = 'No action'
             inner_steps.append(
