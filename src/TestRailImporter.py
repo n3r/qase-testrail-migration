@@ -7,7 +7,7 @@ from concurrent.futures import ThreadPoolExecutor
 class TestRailImporter:
     def __init__(self, config: ConfigManager, logger: Logger) -> None:
         self.pools = Pools(
-            qase_pool=ThrottledThreadPoolExecutor(max_workers=8, requests=230, interval=12),
+            qase_pool=ThrottledThreadPoolExecutor(max_workers=8, requests=250, interval=12),
             tr_pool=ThreadPoolExecutor(max_workers=8),
         )
 
