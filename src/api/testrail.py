@@ -4,6 +4,7 @@ import requests
 import re
 import http.client
 from concurrent.futures import ThreadPoolExecutor, as_completed
+from bs4 import BeautifulSoup
 
 
 class TestrailApiClient:
@@ -15,15 +16,40 @@ class TestrailApiClient:
         self.logger = logger
         self.base_url = base_url
 
+        self.auth = str(
+            base64.b64encode(
+                bytes('%s:%s' % (user, token), 'utf-8')
+            ),
+            'ascii'
+        ).strip()
+
         self.headers = {
+            'Authorization': 'Basic ' + self.auth,
             'Content-Type': 'application/json',
         }
-        self.auth = (user, token)
         self.max_retries = max_retries
         self.backoff_factor = backoff_factor
         self.page_size = 30
 
         # Create a session object
+        self.session = requests.Session()
+        headers = {
+            'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+            'Content-Type': 'application/x-www-form-urlencoded',
+            'Accept-Encoding': 'gzip, deflate, br',
+            'Accept': '*/*',
+            'Connection': 'keep-alive',
+        }
+        login_response = self.session.post(base_url + 'index.php?/auth/login/', data={'name': user, 'password': token, 'rememberme': '1'}, headers=headers)
+
+        soup = BeautifulSoup(login_response.content, 'html.parser')
+
+        # Find the input tag with name="_token" and extract the value attribute
+        self.csrf_token = soup.find('input', {'name': '_token'})['value']
+
+        if login_response.status_code != 200:
+            self.logger.log('Failed to login to TestRail API and get auth cookie')
+            self.session = None
 
     def get(self, uri):
         return self.send_request(requests.get, uri)
@@ -32,7 +58,7 @@ class TestrailApiClient:
         url = self.__url + uri
         for attempt in range(self.max_retries + 1):
             try:
-                response = request_method(url, headers=self.headers, data=payload, auth=self.auth)
+                response = request_method(url, headers=self.headers, data=payload)
                 if response.status_code != 429 and response.status_code <= 201:
                     return self.process_response(response, uri)
                 if response.status_code == 403:

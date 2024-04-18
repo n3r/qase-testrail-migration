@@ -68,6 +68,7 @@ class Cases:
                 self.logger.log(f'[{self.project["code"]}][Tests] Importing {len(cases)} cases from {offset} to {offset + limit} for suite {suite_id}')
                 data = await self._prepare_cases(cases)
                 if data:
+                    self.logger.log(f'[{self.project["code"]}][Tests] Sending {len(data)} cases from {offset} to {offset + limit} for suite {suite_id}')
                     status = await self.pools.qs(self.qase.create_cases, self.project['code'], data)
                     if status:
                         self.mappings.stats.add_entity_count(self.project['code'], 'cases', 'qase', len(cases))
