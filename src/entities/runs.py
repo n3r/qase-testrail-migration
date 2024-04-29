@@ -47,6 +47,8 @@ class Runs:
                 i += 1
                 self.logger.print_status(f'[{self.project["code"]}] Importing runs', i, len(self.index), 1)
                 tg.create_task(self._import_run(run))
+        self.logger.log(f'[{self.project["code"]}][Runs] Test Run imported completed')
+        return
 
     async def _build_index(self) -> None:
         self.logger.log(f'[{self.project["code"]}][Runs] Building index for project {self.project["name"]}')
@@ -83,7 +85,7 @@ class Runs:
                     'author_id': self.mappings.get_user_id(run['created_by']),
                 })
 
-            if len(runs) < limit:
+            if len(runs) < limit or len(runs) > limit:
                 break
 
             offset = offset + limit
@@ -102,7 +104,7 @@ class Runs:
                 if plan is not None and 'entries' in plan and plan['entries'] and len(plan['entries']) > 0:
                     self.logger.log(f'[{self.project["code"]}][Runs] Fetching runs for plan {plan["id"]}')
                     for entry in plan['entries']:
-                        for run in entry:
+                        for run in entry['runs']:
                             self.index.append({
                                 'id': run['id'],
                                 'name': run['name'],
@@ -142,6 +144,7 @@ class Runs:
             await self._import_results_for_run(run, qase_run_id, cases_map)
         else:
             self.logger.log(f'[{self.project["code"]}][Runs] Failed to create a new run in Qase for TestRail run {run["name"]} [{run["id"]}]', 'error')
+        return
 
     def _replace_config_ids(self, config_ids: list) -> list:
         configs = []
@@ -177,6 +180,7 @@ class Runs:
                 i += 1
                 self.logger.log(f'[{self.project["code"]}][Runs] Importing results [Chunk {i}] for the run {run["name"]} [{run["id"]}]')
                 tg.create_task(self._import_results(run, qase_run_id, cases_map, chunk))
+        return 
 
     @staticmethod
     def _chunk_list_generator(results, chunk_size = 500):
@@ -238,6 +242,8 @@ class Runs:
             self.mappings,
             cases_map,
         )
+        self.logger.log(f'[{self.project["code"]}][Runs] Imported {str(len(results))} results for the run {tr_run["name"]} [{tr_run["id"]}]')
+
 
     @staticmethod
     def _merge_comments_with_same_test_id(test_results):

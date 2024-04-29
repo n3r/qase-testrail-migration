@@ -354,6 +354,8 @@ class QaseService:
                             results=res
                         )
                     )
+                self.logger.log(f'{len(res)} results sent to Qase')
+        return
 
     def prepare_result_steps(self, steps, status_map) -> list:
         allowed_statuses = ['passed', 'failed', 'blocked', 'skipped']
