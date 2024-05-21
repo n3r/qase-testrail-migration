@@ -8,7 +8,7 @@ from bs4 import BeautifulSoup
 
 
 class TestrailApiClient:
-    def __init__(self, base_url, user, token, logger, max_retries=7, backoff_factor=5):
+    def __init__(self, base_url, user, token, logger, max_retries=7, backoff_factor=5, skip_csrf=False):
         if not base_url.endswith('/'):
             base_url += '/'
         self.__url = base_url + 'index.php?/api/v2/'
@@ -45,7 +45,7 @@ class TestrailApiClient:
         soup = BeautifulSoup(login_response.content, 'html.parser')
 
         # Find the input tag with name="_token" and extract the value attribute
-        self.csrf_token = soup.find('input', {'name': '_token'})['value']
+        self.csrf_token = None if skip_csrf is True else soup.find('input', {'name': '_token'})['value']
 
         if login_response.status_code != 200:
             self.logger.log('Failed to login to TestRail API and get auth cookie')

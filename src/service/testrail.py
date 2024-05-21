@@ -12,7 +12,8 @@ class TestrailService:
                 token = config.get('testrail.api.password'),
                 logger = logger,
                 max_retries = 5,
-                backoff_factor = 5
+                backoff_factor = 5,
+                skip_csrf = config.get('testrail.api.skip_csrf'),
             )
         )
 
