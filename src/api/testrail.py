@@ -8,13 +8,14 @@ from bs4 import BeautifulSoup
 
 
 class TestrailApiClient:
-    def __init__(self, base_url, user, token, logger, max_retries=7, backoff_factor=5):
+    def __init__(self, base_url, user, token, logger, max_retries=7, backoff_factor=5, no_verify=False):
         if not base_url.endswith('/'):
             base_url += '/'
         self.__url = base_url + 'index.php?/api/v2/'
         self._attachment_url = base_url + 'index.php?/attachments/get/'
         self.logger = logger
         self.base_url = base_url
+        self.verify_ssl = not no_verify
 
         self.auth = str(
             base64.b64encode(
@@ -40,7 +41,7 @@ class TestrailApiClient:
             'Accept': '*/*',
             'Connection': 'keep-alive',
         }
-        login_response = self.session.post(base_url + 'index.php?/auth/login/', data={'name': user, 'password': token, 'rememberme': '1'}, headers=headers)
+        login_response = self.session.post(base_url + 'index.php?/auth/login/', data={'name': user, 'password': token, 'rememberme': '1'}, headers=headers, verify=self.verify_ssl)
 
         soup = BeautifulSoup(login_response.content, 'html.parser')
 
@@ -58,7 +59,7 @@ class TestrailApiClient:
         url = self.__url + uri
         for attempt in range(self.max_retries + 1):
             try:
-                response = request_method(url, headers=self.headers, data=payload)
+                response = request_method(url, headers=self.headers, data=payload, verify=self.verify_ssl)
                 if response.status_code != 429 and response.status_code <= 201:
                     return self.process_response(response, uri)
                 if response.status_code == 403:

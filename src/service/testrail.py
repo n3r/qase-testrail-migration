@@ -7,12 +7,13 @@ class TestrailService:
         self.db_repository = None
         self.api_repository = TestrailApiRepository(
             TestrailApiClient(
-                base_url = config.get('testrail.api.host'),
-                user = config.get('testrail.api.user'),
-                token = config.get('testrail.api.password'),
-                logger = logger,
-                max_retries = 5,
-                backoff_factor = 5
+                base_url=config.get('testrail.api.host'),
+                user=config.get('testrail.api.user'),
+                token=config.get('testrail.api.password'),
+                logger=logger,
+                max_retries=5,
+                backoff_factor=5,
+                no_verify=bool(config.get('testrail.api.no_verify'))
             )
         )
 
