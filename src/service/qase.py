@@ -42,6 +42,7 @@ class QaseService:
         configuration.api_key['TokenAuth'] = config.get('qase.api_token')
         configuration.host = f'{ssl}api{delimiter}{config.get("qase.host")}/v1'
         configuration.ssl_ca_cert = certifi.where()
+        configuration.verify_ssl = not bool(config.get('qase.no_verify'))
 
         self.client = ApiClient(configuration)
 
