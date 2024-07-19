@@ -85,7 +85,7 @@ class TestrailApiClient:
             self.logger.log('Failed to login to TestRail API and get auth cookie')
             return self.get(f'get_attachment/{id}')
         else:
-            return self.session.get(self._attachment_url + id)
+            return self.session.get(self._attachment_url + id, verify=self.verify_ssl)
         
     def fetch_data(self, offset):
         data = {
@@ -100,7 +100,7 @@ class TestrailApiClient:
         }
         self.logger.log(f'Getting attachments list, offset: {offset}')
         try:
-            response = self.session.post(self.base_url + 'index.php?/attachments/overview/0', data=data, headers=headers)
+            response = self.session.post(self.base_url + 'index.php?/attachments/overview/0', data=data, headers=headers, verify=self.verify_ssl)
             response_data = response.json()
             # Extract only the needed fields (id and project_id) from each item
             return [{"id": item["id"], "project_id": item["project_id"]} for item in response_data['data']]
