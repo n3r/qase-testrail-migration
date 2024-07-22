@@ -162,8 +162,8 @@ class Runs:
 
         # Create a new test run in Qase
         run["created_on"] = min(
-            [result["created_on"] if "created_on" in result else math.nan for result in run_results]
-            + [abs(run["created_on"]) if bool(run["created_on"]) else math.nan]
+            [result["created_on"] if "created_on" in result and bool(result["created_on"]) else math.nan for result in run_results]
+            + [run["created_on"] if bool(run["created_on"]) else math.nan]
         )
         qase_run_id = await self.pools.qs(self.qase.create_run, run, self.project['code'], list(cases_map.values()), milestone_id)
 
