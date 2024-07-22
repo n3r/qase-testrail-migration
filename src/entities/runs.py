@@ -167,6 +167,10 @@ class Runs:
         )
         qase_run_id = await self.pools.qs(self.qase.create_run, run, self.project['code'], list(cases_map.values()), milestone_id)
 
+        if not bool(qase_run_id):
+            self.logger.log(f'[{self.project["code"]}][Runs] Failed to create a new run in Qase for TestRail run {run["name"]} [{run["id"]}]', 'error')
+            return
+
         self.logger.log(f'[{self.project["code"]}][Runs] Created a new run in Qase: {qase_run_id}')
         self.mappings.stats.add_entity_count(self.project['code'], 'runs', 'qase')
 
