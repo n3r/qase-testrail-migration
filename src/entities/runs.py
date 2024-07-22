@@ -1,4 +1,5 @@
 import asyncio
+import math
 
 from ..service import QaseService, TestrailService
 from ..support import Logger, Mappings, ConfigManager as Config, Pools
@@ -160,7 +161,7 @@ class Runs:
                 break
 
         # Create a new test run in Qase
-        run["created_on"] = min([result["created_on"] for result in run_results] + [run["created_on"]])
+        run["created_on"] = min([result["created_on"] for result in run_results] + [abs(run["created_on"]) if bool(run["created_on"]) else math.nan])
         qase_run_id = await self.pools.qs(self.qase.create_run, run, self.project['code'], list(cases_map.values()), milestone_id)
 
         self.logger.log(f'[{self.project["code"]}][Runs] Created a new run in Qase: {qase_run_id}')
