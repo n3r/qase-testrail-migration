@@ -160,7 +160,7 @@ class Runs:
                 break
 
         # Create a new test run in Qase
-        run["created_on"] = min(run["created_on"], [result["created_on"] for result in run_results])
+        run["created_on"] = min([result["created_on"] for result in run_results] + [run["created_on"]])
         qase_run_id = await self.pools.qs(self.qase.create_run, run, self.project['code'], list(cases_map.values()), milestone_id)
 
         self.logger.log(f'[{self.project["code"]}][Runs] Created a new run in Qase: {qase_run_id}')
