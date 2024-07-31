@@ -11,6 +11,8 @@ from typing import List, Optional, Union
 from urllib.parse import quote
 from datetime import datetime
 
+import re
+
 
 class Cases:
     def __init__(
@@ -143,7 +145,13 @@ class Cases:
                 id = attachment['id']
                 if 'data_id' in attachment:
                     id = attachment['data_id']
-                if id in self.mappings.attachments_map:
+
+                id = re.sub(r'^E_', '', str(id))
+
+                if id and id not in self.mappings.attachments_map:
+                    self.logger.log(f'[Attachments] Attachment {attachment} not found in attachments_map (array)', 'warning')
+                    self.attachments.replace_failover(id, self.project["code"])
+                if id and id in self.mappings.attachments_map and self.mappings.attachments_map[id] and 'hash' in self.mappings.attachments_map[id]:
                     data['attachments'].append(self.mappings.attachments_map[id]['hash'])
             except Exception as e:
                 self.logger.log(f'[{self.project["code"]}][Tests] Failed to get attachment for case {case["title"]}: {e}', 'error')

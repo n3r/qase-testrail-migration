@@ -96,7 +96,7 @@ class Attachments:
                 self.logger.log(f'[Attachments] Attachment {attachment_id} not replaced in failover', 'error')
         except Exception as e:
             self.logger.log(f'[Attachments] Exception when calling Qase->upload_attachment in failover: {e}', 'error')
-    
+
     def replace_string(self, string, code, attachment_id):
         return re.sub(
             f'!\\[\\]\\(index\\.php\\?/attachments/get/{attachment_id}\\)',
