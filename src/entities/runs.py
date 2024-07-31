@@ -1,4 +1,5 @@
 import asyncio
+import math
 
 from ..service import QaseService, TestrailService
 from ..support import Logger, Mappings, ConfigManager as Config, Pools
@@ -132,16 +133,8 @@ class Runs:
         if run['config_ids'] is not None and len(run['config_ids']) > 0:
             run['configurations'] = self._replace_config_ids(run['config_ids'])
 
-        # Create a new test run in Qase
-        qase_run_id = await self.pools.qs(self.qase.create_run, run, self.project['code'], list(cases_map.values()), milestone_id)
-
-        if (qase_run_id):
-            self.logger.log(f'[{self.project["code"]}][Runs] Created a new run in Qase: {qase_run_id}')
-            self.mappings.stats.add_entity_count(self.project['code'], 'runs', 'qase')
             # Import results for the run
-            await self._import_results_for_run(run, qase_run_id, cases_map)
-        else:
-            self.logger.log(f'[{self.project["code"]}][Runs] Failed to create a new run in Qase for TestRail run {run["name"]} [{run["id"]}]', 'error')
+        await self._import_results_for_run(run, cases_map, milestone_id)
 
     def _replace_config_ids(self, config_ids: list) -> list:
         configs = []
@@ -150,7 +143,7 @@ class Runs:
                 configs.append(self.configurations[config_id])
         return configs
 
-    async def _import_results_for_run(self, run: list, qase_run_id: str, cases_map: dict) -> None:
+    async def _import_results_for_run(self, run: list, cases_map: dict, milestone_id: int) -> None:
         limit = 250
         offset = 0
         run_results = []
@@ -162,6 +155,22 @@ class Runs:
             offset = offset + limit
             if results['size'] < limit:
                 break
+
+        # Create a new test run in Qase
+        run["created_on"] = max(0, min(
+            [result["created_on"] if "created_on" in result and bool(result["created_on"]) else math.nan for result in run_results]
+            + [run["created_on"] if bool(run["created_on"]) else math.nan],
+            key=lambda x: (math.isnan(x), x)
+        ))
+
+        qase_run_id = await self.pools.qs(self.qase.create_run, run, self.project['code'], list(cases_map.values()), milestone_id)
+
+        if not bool(qase_run_id):
+            self.logger.log(f'[{self.project["code"]}][Runs] Failed to create a new run in Qase for TestRail run {run["name"]} [{run["id"]}]', 'error')
+            return
+
+        self.logger.log(f'[{self.project["code"]}][Runs] Created a new run in Qase: {qase_run_id}')
+        self.mappings.stats.add_entity_count(self.project['code'], 'runs', 'qase')
 
         self.logger.log(f'[{self.project["code"]}][Runs] Found {str(len(run_results))} results for the run {run["name"]} [{run["id"]}]')
 

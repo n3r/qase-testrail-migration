@@ -264,7 +264,7 @@ class QaseService:
         api_instance = RunsApi(self.client)
 
         data = {
-            'start_time': datetime.fromtimestamp(run['created_on']).strftime('%Y-%m-%d %H:%M:%S'),
+            'start_time': datetime.utcfromtimestamp(run['created_on']).strftime('%Y-%m-%d %H:%M:%S'),
             'author_id': run['author_id']
         }
 
@@ -310,8 +310,10 @@ class QaseService:
 
                     if 'created_on' in result and result['created_on']:
                         start_time = result['created_on'] - elapsed
+                        if start_time < tr_run['created_on']:
+                            start_time = tr_run['created_on']
                     else:
-                        start_time = tr_run['created_on'] - elapsed
+                        start_time = tr_run['created_on']
 
                     if result['test_id'] in cases_map:
                         status = 'skipped'
