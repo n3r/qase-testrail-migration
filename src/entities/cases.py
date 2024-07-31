@@ -142,11 +142,7 @@ class Cases:
         self.logger.log(f'[{self.project["code"]}][Tests] Found {len(attachments)} attachments for case {case["title"]}')
         for attachment in attachments:
             try:
-                id = attachment['id']
-                if 'data_id' in attachment:
-                    id = attachment['data_id']
-
-                id = re.sub(r'^E_', '', str(id))
+                id = re.sub(r'^E_', '', str(attachment['data_id'] if 'data_id' in attachment else attachment['id']))
 
                 if id and id not in self.mappings.attachments_map:
                     self.logger.log(f'[Attachments] Attachment {attachment} not found in attachments_map (array)', 'warning')
