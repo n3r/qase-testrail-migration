@@ -264,7 +264,7 @@ class QaseService:
         api_instance = RunsApi(self.client)
 
         data = {
-            'start_time': datetime.fromtimestamp(run['created_on']).strftime('%Y-%m-%d %H:%M:%S'),
+            'start_time': datetime.utcfromtimestamp(run['created_on']).strftime('%Y-%m-%d %H:%M:%S'),
             'author_id': run['author_id']
         }
 
