@@ -2,6 +2,7 @@
     "qase": {
         "api_token": "<QASE_API_TOKEN>",
         "scim_token": "<QASE_SCIM_API_TOKEN>",
+        "scim_host": "<QASE_SCIM_HOST|Default:app.qase.io>",
         "host": "<QASE_API_HOST|Default:qase.io>",
         "ssl": true,
         "enterprise": false
