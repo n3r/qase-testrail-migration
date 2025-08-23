@@ -27,7 +27,7 @@ class Runs:
         self.pools = pools
 
         self.attachments = Attachments(self.qase, self.testrail, self.logger, self.mappings, self.config, self.pools)
-        
+
         self.configurations = self.mappings.configurations[self.project['code']]
 
         self.created_after = self.config.get('runs.created_after')
@@ -126,9 +126,13 @@ class Runs:
     async def _import_run(self, run: list) -> None:
         # Load testrail tests from the run ()
         cases_map = await self.__get_cases_for_run(run)
-        self.logger.log(f'[{self.project["code"]}][Runs] Found {str(len(cases_map))} cases in the run {run["name"]} [{run["id"]}]')
+        self.logger.log(
+            f'[{self.project["code"]}][Runs] Found {str(len(cases_map))} cases in the run {run["name"]} [{run["id"]}]')
 
-        milestone_id = self.mappings.milestones[self.project['code']][run['milestone_id']] if run['milestone_id'] in self.mappings.milestones[self.project['code']] else None
+        milestone_id = self.mappings.milestones[self.project['code']][run['milestone_id']] if run['milestone_id'] in \
+                                                                                              self.mappings.milestones[
+                                                                                                  self.project[
+                                                                                                      'code']] else None
 
         if run['config_ids'] is not None and len(run['config_ids']) > 0:
             run['configurations'] = self._replace_config_ids(run['config_ids'])
@@ -158,37 +162,46 @@ class Runs:
 
         # Create a new test run in Qase
         run["created_on"] = max(0, min(
-            [result["created_on"] if "created_on" in result and bool(result["created_on"]) else math.nan for result in run_results]
+            [result["created_on"] if "created_on" in result and bool(result["created_on"]) else math.nan for result in
+             run_results]
             + [run["created_on"] if bool(run["created_on"]) else math.nan],
             key=lambda x: (math.isnan(x), x)
         ))
 
-        qase_run_id = await self.pools.qs(self.qase.create_run, run, self.project['code'], list(cases_map.values()), milestone_id)
+        qase_run_id = await self.pools.qs(self.qase.create_run, run, self.project['code'], list(cases_map.values()),
+                                          milestone_id)
 
         if not bool(qase_run_id):
-            self.logger.log(f'[{self.project["code"]}][Runs] Failed to create a new run in Qase for TestRail run {run["name"]} [{run["id"]}]', 'error')
+            self.logger.log(
+                f'[{self.project["code"]}][Runs] Failed to create a new run in Qase for TestRail run {run["name"]} [{run["id"]}]',
+                'error')
             return
 
         self.logger.log(f'[{self.project["code"]}][Runs] Created a new run in Qase: {qase_run_id}')
         self.mappings.stats.add_entity_count(self.project['code'], 'runs', 'qase')
 
-        self.logger.log(f'[{self.project["code"]}][Runs] Found {str(len(run_results))} results for the run {run["name"]} [{run["id"]}]')
+        self.logger.log(
+            f'[{self.project["code"]}][Runs] Found {str(len(run_results))} results for the run {run["name"]} [{run["id"]}]')
 
         self.logger.log(f'[{self.project["code"]}][Runs] Merging comments for the run {run["name"]} [{run["id"]}]')
         run_results = self._merge_comments(run_results)
 
         self.logger.log(f'[{self.project["code"]}][Runs] Sorting results for the run {run["name"]} [{run["id"]}]')
         run_results = sorted(run_results, key=lambda x: x['created_on'])
-        
+
         i = 0
         async with asyncio.TaskGroup() as tg:
             for chunk in self._chunk_list_generator(run_results, 500):
                 i += 1
-                self.logger.log(f'[{self.project["code"]}][Runs] Importing results [Chunk {i}] for the run {run["name"]} [{run["id"]}]')
+                self.logger.log(
+                    f'[{self.project["code"]}][Runs] Importing results [Chunk {i}] for the run {run["name"]} [{run["id"]}]')
                 tg.create_task(self._import_results(run, qase_run_id, cases_map, chunk))
 
+        if run['is_completed']:
+            await self.pools.tr(self.qase.complete_run, self.project['code'], qase_run_id)
+
     @staticmethod
-    def _chunk_list_generator(results, chunk_size = 500):
+    def _chunk_list_generator(results, chunk_size=500):
         """Yield successive chunks from input_list."""
         for i in range(0, len(results), chunk_size):
             yield results[i:i + chunk_size]
@@ -198,7 +211,8 @@ class Runs:
         for result in results:
             if result['status_id'] != 3:
                 if len(result['attachment_ids']) > 0:
-                    result['attachments'] = self.attachments.check_and_replace_attachments_array(result['attachment_ids'], self.project['code'])
+                    result['attachments'] = self.attachments.check_and_replace_attachments_array(
+                        result['attachment_ids'], self.project['code'])
                 del result['attachment_ids']
                 del result['version']
                 clean_results.append(result)
@@ -214,7 +228,7 @@ class Runs:
                 if result['test_id'] not in comments:
                     comments[result['test_id']] = []
                 comments[result['test_id']].append(result)
-            else: 
+            else:
                 cleaned.append(result)
 
         for result in cleaned:

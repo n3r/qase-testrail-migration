@@ -53,11 +53,15 @@ class Suites:
         return self.mappings
 
     async def import_suite(self, description, project, suite):
-        # Hack to import into root suites: 1000000
+        if self.config.get('suites.single_suite'):
+            testrail_suite_id = 1000000
+        else:
+            testrail_suite_id = 1000000 + suite['id']
         # Creating parent suite (suite -> suite)
-        await self._create_suite(project['code'], suite['name'], description=description, testrail_suite_id=1000000)
+        await self._create_suite(project['code'], suite['name'], description=description,
+                                 testrail_suite_id=testrail_suite_id)
         # Creating sections as suites (section -> suite)
-        await self._create_suites(project['code'], project['testrail_id'], suite['id'], parent_id=1000000)
+        await self._create_suites(project['code'], project['testrail_id'], suite['id'], parent_id=testrail_suite_id)
 
     async def _create_suites(
             self,

@@ -1,6 +1,6 @@
 # qase-testrail-migration
 
-This script helps you to migrate your test cases from TestRail to Qase. It's written in Python 3.11 and uses [Qase API](https://qase.io/api/v1/) and [TestRail API](http://docs.gurock.com/testrail-api2/start).
+This script helps you to migrate your test cases from TestRail to Qase. It's written in Python 3.11 and uses [Qase API](https://developers.qase.io/reference/introduction-to-the-qase-api) and [TestRail API](https://support.testrail.com/hc/en-us/articles/7077083596436-Introduction-to-the-TestRail-API).
 
 ## How to use
 
@@ -34,6 +34,9 @@ Create a new config file from the example or use template:
     "projects": {
         "import": [],
         "status": "all|active|archived"
+    },
+    "suites": {
+        "single_suite": false
     },
     "tests": {
         "preserve_ids": true,
@@ -79,6 +82,7 @@ Required fields to fill:
 - `groups.create` - If set to `true` migrator will create new groups in Qase if it unable to match group from TestRail to Qase. *SCIM API token is required for this option.*
 - `groups.name` - Name of group in Qase where new users will be added. *SCIM API token is required for this option.*
 - `runs.created_after` - Unix timestamp. Migrator will migrate only runs created after this date. *Optional*
+- `suites.single_suite` - If set to `true` migrator will create only one root suite in Qase for all test cases. *Optional*
 - `tests.preserve_ids` - If set to `true` migrator will try to preserve test case IDs from TestRail. *Optional*
 - `tests.fields` - List of fields to migrate. If empty, migrator will migrate all fields. *Optional*
 - `tests.refs.enable` - If set to `true` migrator will add references to TestRail test cases. *Optional*

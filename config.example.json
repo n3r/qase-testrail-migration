@@ -18,6 +18,9 @@
         "import": [],
         "status": "all|active|archived"
     },
+    "suites": {
+        "single_suite": false
+    },
     "tests": {
         "preserve_ids": true,
         "fields": [],

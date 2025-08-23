@@ -12,7 +12,7 @@ class QaseScimService:
         self.logger = logger
 
         self.client = QaseScimClient(
-            base_url=self.config.get('qase.host'), 
+            base_url=self.config.get('qase.scim_host'),
             token=self.config.get('qase.scim_token'), 
             ssl=bool(self.config.get('qase.ssl'))
         )
@@ -63,4 +63,3 @@ class QaseScimService:
             raise ImportException(f'Failed to add user to group: {e}')
         return
         
-    

@@ -15,6 +15,7 @@ class Mappings:
         self.projects = []
         self.attachments_map = {}
         self.shared_steps = {}
+        self.default_priority = 1
 
         # A map of TestRail project ids to Qase project codes
         self.project_map = {}

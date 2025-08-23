@@ -105,19 +105,18 @@ class Fields:
         
     async def _create_refs_field(self, qase_custom_fields):
         if self.config.get('tests.refs.enable'):
-            field = None
             if qase_custom_fields and len(qase_custom_fields) > 0:
                 for qase_field in qase_custom_fields:
                     if qase_field.title == 'Refs':
                         self.logger.log('Refs field found')
                         self.mappings.refs_id = qase_field.id
             
-            if not self.mappings.refs_id and field is not None:
+            if not self.mappings.refs_id:
                 self.logger.log('[Fields] Refs field not found. Creating a new one')
                 data = {
                     'title': 'Refs',
                     'entity': 0, # 0 - case, 1 - run, 2 - defect,
-                    'type': 7,
+                    'type': 2,
                     'is_filterable': True,
                     'is_visible': True,
                     'is_required': False,
@@ -155,8 +154,15 @@ class Fields:
                 for option in field['options']:
                     qase_priorities.append(option)
 
+        default_priority = 1
+        for qase_priority in qase_priorities:
+            if qase_priority['title'].lower() == 'high':
+                default_priority = int(qase_priority['id'])
+                self.mappings.default_priority = default_priority
+                break
+
         for tr_priority in tr_priorities:
-            self.mappings.priorities[tr_priority['id']] = 1
+            self.mappings.priorities[tr_priority['id']] = default_priority
             for qase_priority in qase_priorities:
                 if tr_priority['name'].lower() == qase_priority['title'].lower():
                     self.mappings.priorities[tr_priority['id']] = int(qase_priority['id'])

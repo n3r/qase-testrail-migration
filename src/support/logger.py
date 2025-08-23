@@ -22,7 +22,7 @@ class Logger:
         log = f"[{time_str}][{level}] {message}\n"
         if self.debug:
             print(log)
-        with open(self.log_file, 'a') as f:
+        with open(self.log_file, 'a', encoding='utf-8') as f:
             f.write(log)
 
     def divider(self):

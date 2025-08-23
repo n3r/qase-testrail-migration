@@ -38,24 +38,31 @@ class Attachments:
             if (attachments):
                 return self.replace_attachments(string=string, code = code)
         return str(string)
-    
+
     def check_and_replace_attachments_array(self, attachments: list, code: str) -> list:
         result = []
         for attachment in attachments:
-            if attachment:
-                attachment = re.sub(r'^E_', '', attachment)
-            if attachment and attachment not in self.mappings.attachments_map:
-                self.logger.log(f'[Attachments] Attachment {attachment} not found in attachments_map (array)', 'warning')
-                self.replace_failover(attachment, code)
-            if attachment and attachment in self.mappings.attachments_map and self.mappings.attachments_map[attachment] and 'hash' in self.mappings.attachments_map[attachment]:
-                result.append(self.mappings.attachments_map[attachment]['hash'])
+            try:
+                if attachment is None or isinstance(attachment, int):
+                    continue
+                if attachment:
+                    attachment = re.sub(r'^E_', '', str(attachment))
+                if attachment and attachment not in self.mappings.attachments_map:
+                    self.logger.log(f'[Attachments] Attachment {attachment} not found in attachments_map (array)',
+                                    'warning')
+                    self.replace_failover(attachment, code)
+                if attachment and attachment in self.mappings.attachments_map and self.mappings.attachments_map[
+                    attachment] and 'hash' in self.mappings.attachments_map[attachment]:
+                    result.append(self.mappings.attachments_map[attachment]['hash'])
+            except Exception as e:
+                self.logger.log(f'Error processing attachment {attachment}: {e}', 'error')
         return result
-    
+
     def check_attachments(self, string: str) -> List:
         if (string):
             return re.findall(r'index\.php\?/attachments/get/([a-f0-9-]+)', str(string))
         return []
-    
+
     def _get_attachment_meta(self, data: dict) -> dict:
         content = BytesIO(data.content)
         content.mime = data.headers.get('Content-Type', '')
@@ -83,7 +90,7 @@ class Attachments:
         except Exception as e:
             self.logger.log(f'[Attachments] Exception when replacing attachments in a string {string}: {e}', 'error')
         return string
-    
+
     def replace_failover(self, attachment_id, code: str):
         try:
             self.logger.log(f'[Attachments] Replacing attachment {attachment_id} in failover')
@@ -96,7 +103,7 @@ class Attachments:
                 self.logger.log(f'[Attachments] Attachment {attachment_id} not replaced in failover', 'error')
         except Exception as e:
             self.logger.log(f'[Attachments] Exception when calling Qase->upload_attachment in failover: {e}', 'error')
-    
+
     def replace_string(self, string, code, attachment_id):
         return re.sub(
             f'!\\[\\]\\(index\\.php\\?/attachments/get/{attachment_id}\\)',
@@ -125,31 +132,41 @@ class Attachments:
 
     async def import_raw_attachment(self, attachment):
         self.logger.log(f'[Attachments] Importing attachment: {attachment["id"]}')
-        if len(attachment['project_id']) > 1:
-            self.logger.log(f'[Attachments] Attachment {attachment["id"]} is linked to multiple projects', 'warning')
-        if len(attachment['project_id']) > 0:
-            if attachment['project_id'][0] in self.mappings.project_map:
-                code = self.mappings.project_map[attachment['project_id'][0]]
-                try: 
-                    meta = self._get_attachment_meta(await self.pools.tr(self.testrail.get_attachment, attachment['id']))
-                except Exception as e:
-                    self.logger.log(f'[Attachments] Exception when calling TestRail->get_attachment: {e}', 'error')
-                    return
 
-                try:
-                    qase_attachment = await self.pools.qs(self.qase.upload_attachment, code, meta)
-                    if qase_attachment:
-                        self.mappings.attachments_map[attachment['id']] = qase_attachment
-                        self.logger.log(f'[Attachments] Attachment {attachment["id"]} imported')
-                        self.mappings.stats.add_attachment('qase')
-                    else:
-                        self.logger.log(f'[Attachments] Attachment {attachment["id"]} not imported', 'error')
-                except Exception as e:
-                    self.logger.log(f'[Attachments] Exception when calling Qase->upload_attachment: {e}', 'error')
-            else:
-                self.logger.log(f'[Attachments] Attachment {attachment["id"]} is not linked to any project', 'error')
-        else:
+        project_ids = attachment['project_id'] if isinstance(attachment['project_id'], list) else [
+            attachment['project_id']]
+
+        if not project_ids:
             self.logger.log(f'[Attachments] Attachment {attachment["id"]} is not linked to any project', 'warning')
+            return
+
+        if len(project_ids) > 1:
+            self.logger.log(f'[Attachments] Attachment {attachment["id"]} is linked to multiple projects', 'warning')
+
+        project_id = project_ids[0]
+
+        if project_id not in self.mappings.project_map:
+            self.logger.log(f'[Attachments] Attachment {attachment["id"]} is not linked to any project', 'error')
+            return
+
+        code = self.mappings.project_map[project_id]
+
+        try:
+            meta = self._get_attachment_meta(await self.pools.tr(self.testrail.get_attachment, attachment['id']))
+        except Exception as e:
+            self.logger.log(f'[Attachments] Exception when calling TestRail->get_attachment: {e}', 'error')
+            return
+
+        try:
+            qase_attachment = await self.pools.qs(self.qase.upload_attachment, code, meta)
+            if qase_attachment:
+                self.mappings.attachments_map[attachment['id']] = qase_attachment
+                self.logger.log(f'[Attachments] Attachment {attachment["id"]} imported')
+                self.mappings.stats.add_attachment('qase')
+            else:
+                self.logger.log(f'[Attachments] Attachment {attachment["id"]} not imported', 'error')
+        except Exception as e:
+            self.logger.log(f'[Attachments] Exception when calling Qase->upload_attachment: {e}', 'error')
 
     def _read_cache(self):
         return
